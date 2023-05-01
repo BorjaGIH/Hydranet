@@ -1,3 +1,5 @@
+import os
+
 from shared_pkgs.imports import *
 from Helpers.helper_funcs import *
 from Neural_Net.neural_net import *
@@ -5,8 +7,8 @@ from Neural_Net.losses import *
 from Estimation.estimators import *
 
 
-def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, output_dir='',
-                              knob_loss=dragonnet_loss_cross, ratio=1., dragon='', val_split=0.2, batch_size=64):
+def train_and_predict(t, y_unscaled, x, targeted_regularization=False, output_dir='',
+                      loss=hydranet_loss, val_split=0.2, batch_size=64):
     verbose = 0
     y_unscaled = y_unscaled.values.reshape(-1, 1)
     y_scaler = StandardScaler().fit(y_unscaled)
@@ -14,21 +16,14 @@ def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, o
     train_outputs = []
     test_outputs = []
 
-    if dragon == 'tarnet':
-        dragonnet = make_tarnet(x.shape[1], 0.01)
+    hydranet = make_hydranet(x.shape[1], 0.01)
 
-    elif dragon == 'dragonnet':
-        print("I am here making dragonnet")
-        dragonnet = make_dragonnet(x.shape[1], 0.01)
-        dot_img_file = '/model_1.png'
-        #tf.keras.utils.plot_model(dragonnet, to_file=dot_img_file, show_shapes=True)
-
-    metrics = [regression_loss, categorical_classification_loss, treatment_accuracy, track_epsilon]
+    metrics = [hydranet_loss, regression_loss, categorical_classification_loss, treatment_accuracy, track_epsilon]
 
     if targeted_regularization:
-        loss = make_tarreg_loss(ratio=ratio, dragonnet_loss=knob_loss)
+        loss = make_tarreg_loss(ratio=5, hydranet_loss=loss)
     else:
-        loss = knob_loss
+        loss = loss
 
     # Get train and test indexes, then shuffle
     train_index, test_index = train_test_split(np.arange(x.shape[0]), test_size=0.2, random_state=1, shuffle=False)
@@ -45,7 +40,7 @@ def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, o
     start_time = time.time()
 
     # With Adam
-    dragonnet.compile(
+    hydranet.compile(
         optimizer=Adam(lr=1e-3),
         loss=loss, metrics=metrics, run_eagerly=False)
 
@@ -56,7 +51,7 @@ def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, o
                           min_delta=1e-8, cooldown=0, min_lr=0)
     ]
     
-    dragonnet.fit(x_train, yt_train, callbacks=adam_callbacks,
+    hydranet.fit(x_train, yt_train, callbacks=adam_callbacks,
                   validation_split=val_split,
                   epochs=100,
                   batch_size=batch_size, verbose=verbose)
@@ -64,7 +59,7 @@ def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, o
     # with SGD
     sgd_lr = 1e-5
     momentum = 0.9
-    dragonnet.compile(optimizer=SGD(lr=sgd_lr, momentum=momentum, nesterov=True), 
+    hydranet.compile(optimizer=SGD(lr=sgd_lr, momentum=momentum, nesterov=True),
                       loss=loss, metrics=metrics, run_eagerly=False)
     
     sgd_callbacks = [
@@ -74,7 +69,7 @@ def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, o
                           min_delta=0., cooldown=0, min_lr=0)
     ]
     
-    dragonnet.fit(x_train, yt_train, callbacks=sgd_callbacks,
+    hydranet.fit(x_train, yt_train, callbacks=sgd_callbacks,
                   validation_split=val_split,
                   epochs=300,
                   batch_size=batch_size, verbose=verbose)
@@ -82,24 +77,24 @@ def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, o
     elapsed_time = time.time() - start_time
 
     # Plot metrics to monitor the training process
-    plt.figure()
-    plt.plot(dragonnet.history.history['loss'])
-    plt.plot(dragonnet.history.history['val_loss'])
+    '''plt.figure()
+    plt.plot(hydranet.history.history['loss'])
+    plt.plot(hydranet.history.history['val_loss'])
     plt.legend(["Train", "Test"])
     plt.title("Loss")
     plt.show() # Training and validation losses
     
     plt.figure()
-    plt.plot(dragonnet.history.history['track_epsilon'])
-    plt.plot(dragonnet.history.history['val_track_epsilon'])
+    plt.plot(hydranet.history.history['track_epsilon'])
+    plt.plot(hydranet.history.history['val_track_epsilon'])
     plt.legend(["Train", "Test"])
     plt.title("Epsilon value (Regularization term)")
-    plt.show() # Epsilon
+    plt.show() # Epsilon'''
     
     print("elapsed_time: ", elapsed_time)
     
-    yt_hat_test = dragonnet.predict(x_test)
-    yt_hat_train = dragonnet.predict(x_train)
+    yt_hat_test = hydranet.predict(x_test)
+    yt_hat_train = hydranet.predict(x_train)
     
     print("Train: ", end="")
     train_outputs += [split_output(yt_hat_train, t_train, y_train, y_scaler, x_train, train_index)]
@@ -114,13 +109,13 @@ def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, o
     return test_outputs, train_outputs
 
 
-def run_ihdp(data_base_dir, #='/home/bvelasco/Hydranet_script/Input_data/ihdp/tri_case', 
-             output_dir, #='/home/bvelasco/Hydranet_script/Results/Results_NN/ihdp/ihdp_3/',
-             knob_loss=dragonnet_loss_cross,
-             ratio=1., dragon=''):
-    print("The dragon is {}".format(dragon))
+def run_ihdp(input_dir,
+             output_dir,
+             loss,
+             val_split,
+             batch_size):
 
-    simulation_files = sorted(glob.glob("{}/*.csv".format(data_base_dir)))[1:50]
+    simulation_files = sorted(glob.glob("{}/*.csv".format(input_dir)))
 
     for idx, simulation_file in enumerate(simulation_files):
 
@@ -128,28 +123,20 @@ def run_ihdp(data_base_dir, #='/home/bvelasco/Hydranet_script/Input_data/ihdp/tr
 
         os.makedirs(simulation_output_dir, exist_ok=True)
 
-        x = load_and_format_covariates_ihdp(simulation_file)
-        t, y, y0, y1, y2, mu_0, mu_1, mu_2 = load_all_other_crap(simulation_file)
+        x = load_and_format_covariates(simulation_file)
+        t, y, y0, y1, y2, mu_0, mu_1, mu_2 = load_other_vars(simulation_file)
 
         np.savez_compressed(os.path.join(simulation_output_dir, "simulation_outputs.npz"),
                             t=t, y0=y0, y1=y1, y2=y2, mu_0=mu_0, mu_1=mu_1, mu_2=mu_2)
 
         for is_targeted_regularization in [False, True]:
-        #for is_targeted_regularization in [True]:
             print("Is targeted regularization: {}".format(is_targeted_regularization))
-            if dragon == 'nednet':
-                test_outputs, train_output = train_and_predict_ned(t, y, x,
-                                                                   targeted_regularization=is_targeted_regularization,
-                                                                   output_dir=simulation_output_dir,
-                                                                   knob_loss=knob_loss, ratio=ratio, dragon=dragon,
-                                                                   val_split=0.2, batch_size=64)
-            else:
                 
-                test_outputs, train_output = train_and_predict_dragons(t, y, x,
-                                                                       targeted_regularization=is_targeted_regularization,
-                                                                       output_dir=simulation_output_dir,
-                                                                       knob_loss=knob_loss, ratio=ratio, dragon=dragon,
-                                                                       val_split=0.2, batch_size=64)
+            test_outputs, train_output = train_and_predict(t, y, x,
+                                                            targeted_regularization=is_targeted_regularization,
+                                                            output_dir=simulation_output_dir,
+                                                            loss=loss,
+                                                            val_split=val_split, batch_size=batch_size)
                 
 
             if is_targeted_regularization:
@@ -239,10 +226,26 @@ def make_table(train_test, n_replication, n_reps):
 
 
 def main():
+
+    # Parse arguments
+    num_treats = 3
+    dataset = 'ihdp'
+    bias = 5
+    data_size = None
+    num_confounders = None
+    device = 'CPU'
+    input_dir = None
+    output_dir = None
+    loss = hydranet_loss
+    val_split = 0.2
+    batch_size = 100
+
+    input_dir_ = '/home/bvelasco/Hydranet/Input_data/'+dataset+'/{}_treats/'.format(num_treats)+'bias_{}/'.format(bias)
+    output_dir_ = '/home/bvelasco/Hydranet/Results/Results_NN/' + dataset + '/{}_treats/'.format(num_treats) + 'bias_{}/'.format(bias)
+
     random.seed(1)
     np.random.seed(1)
     
-    n_reps = [1]
     Train = True
     Analyze = True
         
@@ -251,11 +254,12 @@ def main():
         tf.compat.v1.set_random_seed(1)
         tf.compat.v1.disable_eager_execution()
         
-        for n_rep in n_reps:
-            with tf.device('GPU:1'):
-                run_ihdp(data_base_dir='/home/bvelasco/Hydranet_script/Input_data/ihdp/tri_case/reps_{}'.format(n_rep),
-                         output_dir='/home/bvelasco/Hydranet_script/Results/Results_NN/ihdp/ihdp_3/reps_{}/'.format(n_rep),
-                         dragon='dragonnet', ratio=5) # ratio is the beta parameter of the targeted regularization loss function
+        with tf.device('CPU'):
+            run_ihdp(input_dir=input_dir_,
+                    output_dir=output_dir_,
+                    loss = loss,
+                    val_split = val_split,
+                    batch_size = batch_size)
     else:
         print('Do not train')
             
@@ -266,7 +270,7 @@ def main():
         train_or_test = 'train'
         
         result_table.append(Parallel(n_jobs=15)(delayed(make_table)(train_test=train_or_test, n_replication=15, n_reps=n_rep) for n_rep in [1]))
-        pd.DataFrame(result_table[0]).to_csv('/home/bvelasco/Hydranet_script/Results/Results_CI/ihdp/ihdp_3/results_{}.csv'.format(train_or_test))
+        pandas.DataFrame(result_table[0]).to_csv('/home/bvelasco/Hydranet_script/Results/Results_CI/ihdp/3_treats/results_{}.csv'.format(train_or_test))
     else:
         print('Do not analyze')
     

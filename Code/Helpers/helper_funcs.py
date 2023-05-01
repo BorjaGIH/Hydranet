@@ -1,6 +1,6 @@
 from shared_pkgs.imports import *
 
-def load_and_format_covariates_ihdp(file_path):
+def load_and_format_covariates(file_path):
 
     data = pandas.read_csv(file_path, delimiter=',')
 
@@ -11,7 +11,7 @@ def load_and_format_covariates_ihdp(file_path):
     x = data[perm]
     return x
 
-def load_all_other_crap(file_path):
+def load_other_vars(file_path):
     data = pandas.read_csv(file_path, delimiter=',')
     t, y, y0, y1, y2 = data['z'], data['y'], data['y_0'], data['y_1'],  data['y_2']
     mu_0, mu_1, mu_2 =  data['mu_0'], data['mu_1'], data['mu_2']
@@ -48,7 +48,7 @@ def load_truth(replication, n_rep):
     loading ground truth data
     """
 
-    file_path = '/home/bvelasco/Dragonnet/dragonnet/result/ihdp_3/reps_{}/{}/simulation_outputs.npz'.format(n_rep, replication)
+    file_path = '/home/bvelasco/Dragonnet/dragonnet/result/3_treats/reps_{}/{}/simulation_outputs.npz'.format(n_rep, replication)
     data = load(file_path)
     mu_0 = data['mu_0']
     mu_1 = data['mu_1']
@@ -62,7 +62,7 @@ def load_data(replication=1, model='baseline', train_test='test', n_rep='1'):
     loading train test experiment results
     """
 
-    file_path = '/home/bvelasco/Dragonnet/dragonnet/result/ihdp_3/reps_{}/'.format(n_rep)
+    file_path = '/home/bvelasco/Dragonnet/dragonnet/result/3_treats/reps_{}/'.format(n_rep)
     data = load(file_path + '{}/{}/0_replication_{}.npz'.format(replication, model, train_test))
 
     return data['q_t0'].reshape(-1, 1), data['q_t1'].reshape(-1, 1), data['q_t2'].reshape(-1, 1), data['g'].reshape(-1, 1), \

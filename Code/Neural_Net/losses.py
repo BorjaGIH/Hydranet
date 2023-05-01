@@ -20,8 +20,6 @@ def categorical_classification_loss(concat_true, concat_pred):
     t_pred = concat_pred[:, 3:6]
     t_pred = (t_pred + 0.001) / 1.002
     
-    #temp = to_categorical(t_true, num_classes=3)
-    #temp = to_categorical(t_true, num_classes=3, dtype='int')
     temp = tf.one_hot(tf.cast(t_true, tf.int32), 3)
     temp = tf.cast(temp, tf.float32)
     
@@ -32,9 +30,8 @@ def categorical_classification_loss(concat_true, concat_pred):
     return losst
 
 
-def dragonnet_loss_cross(concat_true, concat_pred):
+def hydranet_loss(concat_true, concat_pred):
     return regression_loss(concat_true, concat_pred) + categorical_classification_loss(concat_true, concat_pred)
-
 
 
 def binary_classification_loss(concat_true, concat_pred): # Deprecated
@@ -53,7 +50,7 @@ def treatment_accuracy(concat_true, concat_pred): # For training monitoring purp
     temp = tf.one_hot(tf.cast(t_true, tf.int32), 3)
     temp = tf.cast(temp, tf.float32)
 
-    return categorical_accuracy(temp, t_pred) # .numpy()
+    return categorical_accuracy(temp, t_pred)
 
 
 def track_epsilon(concat_true, concat_pred): # For training monitoring purposes
@@ -62,9 +59,9 @@ def track_epsilon(concat_true, concat_pred): # For training monitoring purposes
     return tf.abs(tf.reduce_mean(epsilons))
 
 
-def make_tarreg_loss(ratio=1., dragonnet_loss=dragonnet_loss_cross): # Targeted regularization loss
+def make_tarreg_loss(ratio=1., hydranet_loss=hydranet_loss): # Targeted regularization loss
     def tarreg_ATE_unbounded_domain_loss(concat_true, concat_pred):
-        vanilla_loss = dragonnet_loss(concat_true, concat_pred)
+        vanilla_loss = hydranet_loss(concat_true, concat_pred)
 
         y_true = concat_true[:, 0]
         t_true = concat_true[:, 1]
@@ -82,7 +79,6 @@ def make_tarreg_loss(ratio=1., dragonnet_loss=dragonnet_loss_cross): # Targeted 
         y_pred = tf.cast(t_true==0, tf.float32) * y0_pred + tf.cast(t_true==1, tf.float32) * y1_pred + tf.cast(t_true==2, tf.float32) * y2_pred
         t_pred_current = tf.cast(t_true==0, tf.float32) * t_pred[:,0] + tf.cast(t_true==1, tf.float32) * t_pred[:,1] + tf.cast(t_true==2, tf.float32) * t_pred[:,2]
         
-        # wrong_h =  1 # WARNING: Model misspecification activated
         h = tf.transpose([tf.cast(t_true==1, tf.float32)/t_pred[:,1] - tf.cast(t_true==0, tf.float32)/t_pred[:,0], tf.cast(t_true==2, tf.float32)/t_pred[:,2] - tf.cast(t_true==0, tf.float32)/t_pred[:,0]])
         y_pert = y_pred + tf.math.reduce_sum(tf.math.multiply(epsilons,h), axis=1)
         

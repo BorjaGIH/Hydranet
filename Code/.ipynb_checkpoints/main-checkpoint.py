@@ -114,8 +114,8 @@ def train_and_predict_dragons(t, y_unscaled, x, targeted_regularization=False, o
     return test_outputs, train_outputs
 
 
-def run_ihdp(data_base_dir, #='/home/bvelasco/Hydranet_script/Input_data/ihdp/tri_case', 
-             output_dir, #='/home/bvelasco/Hydranet_script/Results/Results_NN/ihdp/ihdp_3/',
+def run_ihdp(data_base_dir, #='/home/bvelasco/Hydranet_script/Input_data/ihdp/3_treats',
+             output_dir, #='/home/bvelasco/Hydranet_script/Results/Results_NN/ihdp/3_treats/',
              knob_loss=dragonnet_loss_cross,
              ratio=1., dragon=''):
     print("The dragon is {}".format(dragon))
@@ -253,8 +253,8 @@ def main():
         
         for n_rep in n_reps:
             with tf.device('GPU:1'):
-                run_ihdp(data_base_dir='/home/bvelasco/Hydranet_script/Input_data/ihdp/tri_case/reps_{}'.format(n_rep),
-                         output_dir='/home/bvelasco/Hydranet_script/Results/Results_NN/ihdp/ihdp_3/reps_{}/'.format(n_rep),
+                run_ihdp(data_base_dir='/home/bvelasco/Hydranet_script/Input_data/ihdp/3_treats/reps_{}'.format(n_rep),
+                         output_dir='/home/bvelasco/Hydranet_script/Results/Results_NN/ihdp/3_treats/reps_{}/'.format(n_rep),
                          dragon='dragonnet', ratio=5) # ratio is the beta parameter of the targeted regularization loss function
     else:
         print('Do not train')
@@ -267,7 +267,7 @@ def main():
         
         result_table.append(Parallel(n_jobs=15)(delayed(make_table)(train_test=train_or_test, n_replication=15, n_reps=n_rep)
                            for n_rep in [1]))
-        pandas.DataFrame(result_table[0]).to_csv('/home/bvelasco/Hydranet_script/Results/Results_CI/ihdp/ihdp_3/results_{}.csv'.format( train_or_test))
+        pandas.DataFrame(result_table[0]).to_csv('/home/bvelasco/Hydranet_script/Results/Results_CI/ihdp/3_treats/results_{}.csv'.format( train_or_test))
     else:
         print('Do not analyze')
     

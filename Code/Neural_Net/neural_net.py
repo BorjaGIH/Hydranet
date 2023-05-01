@@ -22,7 +22,7 @@ class EpsilonLayer(Layer): #careful, we modify this function
     
     
 # Define Hydranet architecture
-def make_dragonnet(input_dim, reg_l2):
+def make_hydranet(input_dim, reg_l2):
     """
     Neural net predictive model. The dragon has many heads.
     :param input_dim:
@@ -55,12 +55,7 @@ def make_dragonnet(input_dim, reg_l2):
     y1_predictions = Dense(units=1, activation=None, kernel_regularizer=regularizers.l2(reg_l2), name='y1_predictions')(y1_hidden)
     y2_predictions = Dense(units=1, activation=None, kernel_regularizer=regularizers.l2(reg_l2), name='y2_predictions')(y2_hidden)
 
-    
-    # WARNING! Model misspecification activated
-    #garb = inputs*tf.random.uniform([1,])
-    #garbage_t = Dense(units=3, activation = 'softmax')(garb)
-    
-    
+
     # epsilons
     dl = EpsilonLayer()
     epsilons = dl(t_predictions, name='epsilon')
