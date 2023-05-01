@@ -78,6 +78,7 @@ jupyterlab==3.6.1
 jupyterlab-pygments==0.2.2
 jupyterlab_server==2.19.0
 jupytext==1.14.5
+keras==2.7.0
 keyring==18.0.1
 kiwisolver==1.4.4
 language-selector==0.1
@@ -169,6 +170,7 @@ stack-data==0.6.2
 statsmodels==0.13.5
 systemd-python==234
 terminado==0.17.1
+tensorflow==2.7.0
 threadpoolctl==3.1.0
 tinycss2==1.2.1
 toml==0.10.2

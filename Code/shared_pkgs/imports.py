@@ -6,7 +6,7 @@
 import pandas
 import numpy as np
 import tensorflow as tf
-import glob2 as glob
+import glob as glob
 import os
 import random
 import keras.backend as K
