@@ -29,3 +29,4 @@ from keras.layers import Layer, Input, Dense, Concatenate, BatchNormalization, D
 from keras.models import Model
 from keras import regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau, TerminateOnNaN
+from lightgbm import LGBMRegressor

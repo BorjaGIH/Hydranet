@@ -1,135 +1,116 @@
 from shared_pkgs.imports import *
 from Helpers.helper_funcs import *
 
-def _perturbed_model_bin_outcome(q_t0, q_t1, g, t, eps): # Not adapted for trinary case
-    """
-    Helper for psi_tmle_bin_outcome
+def psi_iptw(g, t, y, truncate_level=0.05):
 
-    Returns q_\eps (t,x)
-    (i.e., value of perturbed predictor at t, eps, x; where q_t0, q_t1, g are all evaluated at x
-    """
-    h = t * (1./g) - (1.-t) / (1. - g)
-    full_lq = (1.-t)*logit(q_t0) + t*logit(q_t1)  # logit predictions from unperturbed model
-    logit_perturb = full_lq + eps * h
-    return expit(logit_perturb)
+    orig_g = g.copy()
 
+    t = t.flatten()
+    encoded_t = np.zeros((t.size, t.max() + 1))
+    encoded_t[np.arange(t.size), t] = 1
 
-def psi_tmle_bin_outcome(q_t0, q_t1, g, t, y, truncate_level=0.05): # Not adapted for trinary case
-    # TODO: make me usable
-    # solve the perturbation problem
+    g = g.reshape(max(t) + 1, len(y)).T
+    g_t = encoded_t * (1 / g)
 
-    q_t0, q_t1, g, t, y = truncate_all_by_g(q_t0, q_t1, g, t, y, truncate_level)
+    h1_0 = g_t[:, 1] - g_t[:, 0]
+    h2_0 = g_t[:, 2] - g_t[:, 0]
+    h3_0 = g_t[:, 3] - g_t[:, 0]
+    h4_0 = g_t[:, 4] - g_t[:, 0]
 
-    eps_hat = minimize(lambda eps: cross_entropy(y, _perturbed_model_bin_outcome(q_t0, q_t1, g, t, eps))
-                       , 0., method='Nelder-Mead')
+    ite1_0 = np.multiply(h1_0, y.flatten()).reshape(-1, 1)
+    ite2_0 = np.multiply(h2_0, y.flatten()).reshape(-1, 1)
+    ite3_0 = np.multiply(h3_0, y.flatten()).reshape(-1, 1)
+    ite4_0 = np.multiply(h4_0, y.flatten()).reshape(-1, 1)
 
-    eps_hat = eps_hat.x[0]
+    ite1_0 = np.mean(truncate_by_g(ite1_0, orig_g.reshape(-1, 1), level=truncate_level))
+    ite2_0 = np.mean(truncate_by_g(ite2_0, orig_g.reshape(-1, 1), level=truncate_level))
+    ite3_0 = np.mean(truncate_by_g(ite3_0, orig_g.reshape(-1, 1), level=truncate_level))
+    ite4_0 = np.mean(truncate_by_g(ite4_0, orig_g.reshape(-1, 1), level=truncate_level))
 
-    def q1(t_cf):
-        return _perturbed_model_bin_outcome(q_t0, q_t1, g, t_cf, eps_hat)
+    # ite=(t / g - (1-t) / (1-g))*y
+    # return np.mean(truncate_by_g(ite, g, level=truncate_level))
 
-    ite = q1(np.ones_like(t)) - q1(np.zeros_like(t))
-    return np.mean(ite)
-
-
-def psi_tmle_cont_outcome(q_t0, q_t1, g, t, y, eps_hat=None, truncate_level=0.05): # Not adapted for trinary case
-    q_t0, q_t1, g, t, y = truncate_all_by_g(q_t0, q_t1, g, t, y, truncate_level)
+    return [ite1_0, ite2_0, ite3_0, ite4_0]
 
 
-    g_loss = mse(g, t)
-    h = t * (1.0/g) - (1.0-t) / (1.0 - g)
-    full_q = (1.0-t)*q_t0 + t*q_t1 # predictions from unperturbed model
+def psi_aiptw(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, truncate_level=0.05):
 
-    if eps_hat is None:
-        eps_hat = np.sum(h*(y-full_q)) / np.sum(np.square(h))
+    q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y = truncate_all_by_g(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, truncate_level)
 
-    def q1(t_cf):
-        h_cf = t_cf * (1.0 / g) - (1.0 - t_cf) / (1.0 - g)
-        full_q = (1.0 - t_cf) * q_t0 + t_cf * q_t1  # predictions from unperturbed model
-        return full_q + eps_hat * h_cf
+    t = t.flatten()
+    encoded_t = np.zeros((t.size, t.max() + 1))
+    encoded_t[np.arange(t.size), t] = 1
 
-    ite = q1(np.ones_like(t)) - q1(np.zeros_like(t))
-    psi_tmle = np.mean(ite)
+    fullq = np.sum(np.concatenate([q_t0, q_t1, q_t2, q_t3, q_t4], axis=1) * encoded_t, axis=1)
 
-    # standard deviation computation relies on asymptotic expansion of non-parametric estimator, see van der Laan and Rose p 96
-    ic = h*(y-q1(t)) + ite - psi_tmle
-    psi_tmle_std = np.std(ic) / np.sqrt(t.shape[0])
-    initial_loss = np.mean(np.square(full_q-y))
-    final_loss = np.mean(np.square(q1(t)-y))
+    g = g.reshape(max(t) + 1, len(y)).T
+    g_t = encoded_t * (1 / g)
 
+    h1_0 = g_t[:, 1] - g_t[:, 0]
+    h2_0 = g_t[:, 2] - g_t[:, 0]
+    h3_0 = g_t[:, 3] - g_t[:, 0]
+    h4_0 = g_t[:, 4] - g_t[:, 0]
 
-    return psi_tmle, psi_tmle_std, eps_hat, initial_loss, final_loss, g_loss
+    ite1_0 = h1_0 * (y - fullq) + q_t1 - q_t0
+    ite2_0 = h2_0 * (y - fullq) + q_t2 - q_t0
+    ite3_0 = np.multiply(h3_0, y.flatten()).reshape(-1, 1)
+    ite4_0 = np.multiply(h4_0, y.flatten()).reshape(-1, 1)
 
+    # ite1_0 =  q_t1 - q_t0
+    # ite2_0 =  q_t2 - q_t0
+    # h = t * (1.0 / g) - (1.0 - t) / (1.0 - g)
+    # ite = h * (y - full_q) + q_t1 - q_t0
 
-def psi_iptw(q_t0, q_t1, g, t, y, truncate_level=0.05): # Not adapted for trinary case
-    ite=(t / g - (1-t) / (1-g))*y
-    return np.mean(truncate_by_g(ite, g, level=truncate_level))
-
-
-def psi_aiptw(q_t0, q_t1, q_t2, g, t, y, truncate_level=0.05): # Not adapted for trinary case
-    q_t0, q_t1, q_t2, g, t, y = truncate_all_by_g(q_t0, q_t1, g, t, y, truncate_level)
-
-    full_q = q_t0 * (1 - t) + q_t1 * t
-    h = t * (1.0 / g) - (1.0 - t) / (1.0 - g)
-    ite = h * (y - full_q) + q_t1 - q_t0
-
-    return np.mean(ite)
+    return [np.mean(ite1_0), np.mean(ite2_0), np.mean(ite3_0), np.mean(ite4_0)]
 
 
-def psi_naive(q_t0, q_t1, q_t2, g, t, y, truncate_level=0.): # Adapted for trinary case
+def psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.05):
     ite1_0 = (q_t1 - q_t0)
     ite2_0 = (q_t2 - q_t0)
-    
+    ite3_0 = (q_t3 - q_t0)
+    ite4_0 = (q_t4 - q_t0)
+
     ite1_0 = np.mean(truncate_by_g(ite1_0, g, level=truncate_level))
     ite2_0 = np.mean(truncate_by_g(ite2_0, g, level=truncate_level))
-    
-    #return np.mean(truncate_by_g(ite, g, level=truncate_level))
-    return [ite1_0, ite2_0]
+    ite3_0 = np.mean(truncate_by_g(ite3_0, g, level=truncate_level))
+    ite4_0 = np.mean(truncate_by_g(ite4_0, g, level=truncate_level))
+
+    return [ite1_0, ite2_0, ite3_0, ite4_0]
 
 
-def psi_very_naive(y, t, truncate_level=0.): # Adapted for trinary case
+def psi_very_naive(y, t):
     y1_0 = y[t == 1].mean() - y[t == 0].mean()
     y2_0 = y[t == 2].mean() - y[t == 0].mean()
+    y3_0 = y[t == 3].mean() - y[t == 0].mean()
+    y4_0 = y[t == 4].mean() - y[t == 0].mean()
 
-    #return y[t == 1].mean() - y[t == 0].mean()
-    return [y1_0, y2_0]
+    return [y1_0, y2_0, y3_0, y4_0]
 
-def ates_from_atts(q_t0, q_t1, g, t, y, truncate_level=0.05): # Not adapted for trinary
-    """
-    Sanity check code: ATE = ATT_1*P(T=1) + ATT_0*P(T=1)
 
-    :param q_t0:
-    :param q_t1:
-    :param g:
-    :param t:
-    :param y:
-    :param truncate_level:
-    :return:
-    """
+def get_estimate(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y_dragon, truncate_level=0.01):
 
-    prob_t = t.mean()
+    psi_vn = psi_very_naive(y_dragon, t)
+    psi_n = psi_naive(q_t0, q_t1, q_t2, g, t, y_dragon, truncate_level=truncate_level)
+    psi_iptw_ = psi_iptw(g, t, y, truncate_level=truncate_level)
+    psi_aiptw_ = psi_aiptw(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, truncate_level=truncate_level)
 
-    att = att_estimates(q_t0, q_t1, g, t, y, prob_t, truncate_level=truncate_level)
-    atnott = att_estimates(q_t1, q_t0, 1.-g, 1-t, y, 1.-prob_t, truncate_level=truncate_level)
+    return psi_vn, psi_n
 
-    att['one_step_tmle'] = att['one_step_tmle'][0]
-    atnott['one_step_tmle'] = atnott['one_step_tmle'][0]
 
-    ates = {}
-    for k in att.keys():
-        ates[k] = att[k]*prob_t + atnott[k]*(1.-prob_t)
+################ FOR DRAGONNET ################
 
-    return ates
+def psi_naive_dr(q_t0, q_t1, g, truncate_level=0.05):
+    ite = (q_t1 - q_t0)
+    return np.mean(truncate_by_g(ite, g, level=truncate_level))
 
-def get_estimate(q_t0, q_t1, q_t2, g, t, y_dragon, index, eps, truncate_level=0.01):
+def psi_very_naive_dr(y, t):
+    return y[t == 1].mean() - y[t == 0].mean()
+
+def get_estimate_dr(q_t0, q_t1, g, t, y_dragon, truncate_level=0.01):
     """
     getting the back door adjustment & TMLE estimation
     """
+    psi_vn = psi_very_naive_dr(y_dragon, t)
+    psi_n = psi_naive_dr(q_t0, q_t1, g, truncate_level=truncate_level)
 
-    psi_n = psi_naive(q_t0, q_t1, q_t2, g, t, y_dragon, truncate_level=truncate_level)
-    #psi_tmle, psi_tmle_std, eps_hat, initial_loss, final_loss, g_loss = psi_tmle_cont_outcome(q_t0, q_t1, g, t,
-    #                                                                                          y_dragon,
-    #                                                                                          truncate_level=truncate_level)
-    psi_vn = psi_very_naive(y_dragon, t)
-    #return psi_vn, initial_loss, final_loss, g_loss
     return psi_vn, psi_n
