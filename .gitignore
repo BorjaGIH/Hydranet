@@ -1,0 +1,6 @@
+# Ignore changes in this files/folders
+
+Code/Estimation/__pycache__/
+Code/Helpers/__pycache__/
+Code/Neural_Net/__pycache__/
+Code/shared_pkgs/__pycache__/
