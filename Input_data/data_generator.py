@@ -6,10 +6,17 @@ import sys
 num_treats = 5 # or 10
 num_covars = 30
 num_reps = 20
-dataset = 'ihdp' # or 'synthetic'
+dataset = 'synthetic' # or 'synthetic'
 output_parent_dir = '/home/bvelasco/Hydranet/Input_data'
 np.random.seed(1)
 
+def plot_histograms(data, z, y_toplot, bins, path):
+    ax = data[y_toplot].hist(bins=bins)
+    data[y_toplot][data.z == 1].hist(bins=bins)
+    ax.legend(['Y{}'.format(z), 'Y[T={}]'.format(z)]);
+    fig = ax.get_figure()
+    fig.savefig(os.path.join(path,'y{}_y_{}.pdf'.format(z,z)))
+    ax.clear()
 
 def analyse_generated_data(temp_all, path):
 
@@ -86,42 +93,8 @@ def analyse_generated_data(temp_all, path):
 
     ### Individual histograms
 
-    '''temp_all.y_0.hist(bins=1000)
-    temp_all.y[temp_all.z == 0].hist(bins=1000)
-
-    ax = temp_all.y_1.hist(bins=1000)
-    temp_all.y[temp_all.z == 1].hist(bins=1000)
-    ax.legend(['Y1', 'Y[T=1]']);
-    fig = ax.get_figure()
-    fig.savefig('{}_y1_y_1.pdf'.format(bias_size))
-
-    print('Y_1 mean and std: {}, {}'.format(covars_tab.y_1.mean(), covars_tab.y_1.std()))
-    print('Y[T=1] mean and std: {}, {}'.format(covars_tab.y[covars_tab.z == 1].mean(),
-                                               covars_tab.y[covars_tab.z == 1].std()))
-
-    temp_all.y_2.hist(bins=1000)
-    temp_all.y[temp_all.z == 2].hist(bins=1000)
-
-    temp_all.y_3.hist(bins=100)
-    temp_all.y[temp_all.z == 3].hist(bins=100)
-
-    temp_all.y_4.hist(bins=100)
-    temp_all.y[temp_all.z == 4].hist(bins=100)
-
-    ### ATE histograms. THIS IS CONCEPTUALLY WRONG!!!!
-
-    ax = (temp_all.y_1 - temp_all.y_0).hist(bins=1000)
-    (temp_all.y[temp_all.z == 1] - temp_all.y[temp_all.z == 0]).hist(bins=1000)
-    ax.legend(['{}_ATE1-ATE0', 'ATE[T=1]-ATE[T=0]'.format(bias_size)]);
-
-    (temp_all.y_2 - temp_all.y_0).hist(bins=1000)
-    (temp_all.y[temp_all.z == 2] - temp_all.y[temp_all.z == 0]).hist(bins=1000)
-
-    (temp_all.y_3 - temp_all.y_0).hist(bins=1000)
-    (temp_all.y[temp_all.z == 3] - temp_all.y[temp_all.z == 0]).hist(bins=1000)
-
-    (temp_all.y_4 - temp_all.y_0).hist(bins=1000)
-    (temp_all.y[temp_all.z == 4] - temp_all.y[temp_all.z == 0]).hist(bins=1000)'''
+    for z in range(num_treats):
+        plot_histograms(data=temp_all, z=z, y_toplot='y_{}'.format(z), bins=500, path=path)
 
 
 if dataset=='ihdp':
@@ -244,7 +217,7 @@ elif dataset=='synthetic':
 
             for data_size_val in data_size:
 
-                columns = ['x{}'.format(i) for i in range(30)]+['mu_0', 'mu_1','mu_2', 'mu_3', 'mu_4', 'y_0', 'y_1', 'y_2', 'y_3', 'y_4', 'y', 'z']
+                columns = ['x{}'.format(i) for i in range(num_covars)]+['mu_0', 'mu_1','mu_2', 'mu_3', 'mu_4', 'y_0', 'y_1', 'y_2', 'y_3', 'y_4', 'y', 'z']
                 temp_all = pd.DataFrame(columns=columns)
 
                 for j in range(num_reps):
@@ -273,6 +246,7 @@ elif dataset=='synthetic':
                     temp_all = pd.concat([temp_all, covars_tab], axis=0)
 
                 analyse_generated_data(temp_all, output_dir)
+
 
     print('Done synthetic')
 
