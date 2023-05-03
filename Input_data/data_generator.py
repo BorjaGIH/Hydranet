@@ -196,9 +196,9 @@ if dataset=='ihdp':
     print('Done ihdp')
 
 elif dataset=='synthetic':
-    var_dict = {'bias':{'bias':[1, 10, 30, 50], 'data_size':2000, 'n_confs':2},
-                'n_confs':{'bias':30, 'data_size':2000, 'n_confs':[2, 5, 10, 18]},
-                'data_size':{'bias':30, 'data_size':[1000, 2000, 5000, 10000], 'n_confs':2}
+    var_dict = {'bias':{'bias':[1e2, 1e3, 3e4, 5e6], 'data_size':2000, 'n_confs':2},
+                'n_confs':{'bias':1e3, 'data_size':2000, 'n_confs':[2, 5, 10, 18]},
+                'data_size':{'bias':1e3, 'data_size':[1000, 2000, 5000, 10000], 'n_confs':2}
                 }
 
     for main_param in ['bias','n_confs','data_size']:
