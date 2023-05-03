@@ -196,9 +196,9 @@ if dataset=='ihdp':
     print('Done ihdp')
 
 elif dataset=='synthetic':
-    var_dict = {'bias':{'bias':[1e2, 1e3, 3e4, 5e6], 'data_size':2000, 'n_confs':2},
-                'n_confs':{'bias':1e3, 'data_size':2000, 'n_confs':[2, 5, 10, 18]},
-                'data_size':{'bias':1e3, 'data_size':[1000, 2000, 5000, 10000], 'n_confs':2}
+    var_dict = {'bias':{'bias':[2, 5, 10, 30], 'data_size':2000, 'n_confs':2},
+                'n_confs':{'bias':20, 'data_size':2000, 'n_confs':[2, 5, 10, 18]},
+                'data_size':{'bias':20, 'data_size':[1000, 2000, 5000, 10000], 'n_confs':2}
                 }
 
     for main_param in ['bias','n_confs','data_size']:
@@ -246,10 +246,12 @@ elif dataset=='synthetic':
 
 
                 # Output
-                beta = 0.0001*np.random.randn(num_covars)
+                beta = 0.01*np.random.randn(num_covars)
                 beta2 = 0.1*np.random.randn(n_confs+1)
                 #f = lambda x, tt: np.sqrt(np.abs(np.matmul(x, beta) + bias*np.matmul(np.c_[x[:,0:n_confs],tt**4], beta2))) # + 2*tt**2
-                f = lambda x,t: np.matmul(np.c_[x], beta) + np.log(np.abs(bias*np.matmul(np.c_[x[:,0:n_confs],t**2],beta2)**3)) + bias*np.matmul(np.c_[x[:,0:n_confs],t**2],beta2)
+                f = lambda x,t: np.matmul(np.c_[x], beta) + bias*np.matmul(np.c_[x[:,0:n_confs],t**2],beta2)**3 + bias*np.matmul(np.c_[x[:,0:n_confs],t],beta2)
+                f = lambda x,t: np.matmul(np.c_[x], beta) + bias*sum(x[:,0:n_confs])**3 + bias*sum(x[:,0:n_confs])
+
                 # Compute true effect
                 mu_0 = f(X.to_numpy(), 0 * np.ones(X.shape[0])).reshape(-1,1)
                 mu_1 = f(X.to_numpy(), 1 * np.ones(X.shape[0])).reshape(-1,1)
