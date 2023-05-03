@@ -1,19 +1,131 @@
 import numpy as np
 import pandas as pd
 import os
+import sys
 
 num_treats = 5 # or 10
 num_covars = 30
-bias = 5
 num_reps = 2
-dataset = 'synthetic' # or 'synthetic'
+dataset = 'ihdp' # or 'synthetic'
 output_parent_dir = '/home/bvelasco/Hydranet/Input_data'
 np.random.seed(1)
 
+
+def analyse_generated_data(temp_all, path):
+
+    file = os.path.join(path,'summary.txt')
+    with open(file, 'w') as sumfile:
+        sumfile.write('Percentage of T==0: {}\n'.format(sum(temp_all['z'] == 0) / len(temp_all)))
+        sumfile.write('Percentage of T==1: {}\n'.format(sum(temp_all['z'] == 1) / len(temp_all)))
+        sumfile.write('Percentage of T==2: {}\n'.format(sum(temp_all['z'] == 2) / len(temp_all)))
+        sumfile.write('Percentage of T==3: {}\n'.format(sum(temp_all['z'] == 3) / len(temp_all)))
+        sumfile.write('Percentage of T==4: {}\n'.format(sum(temp_all['z'] == 4) / len(temp_all)))
+        sumfile.write('*******\n')
+
+        ### Mean values of the true effects
+
+        sumfile.write('True average y_0: {}\n'.format(temp_all['y_0'].mean()))
+        sumfile.write('True average y_1: {}\n'.format(temp_all['y_1'].mean()))
+        sumfile.write('True average y_2: {}\n'.format(temp_all['y_2'].mean()))
+        sumfile.write('True average y_3: {}\n'.format(temp_all['y_3'].mean()))
+        sumfile.write('True average y_4: {}\n'.format(temp_all['y_4'].mean()))
+        sumfile.write('*******\n')
+
+        ### Mean values of the observable, biased effects
+
+        sumfile.write('Biased average y0: {}\n'.format(temp_all.y[temp_all.z == 0].mean()))
+        sumfile.write('Biased average y1: {}\n'.format(temp_all.y[temp_all.z == 1].mean()))
+        sumfile.write('Biased average y2: {}\n'.format(temp_all.y[temp_all.z == 2].mean()))
+        sumfile.write('Biased average y3: {}\n'.format(temp_all.y[temp_all.z == 3].mean()))
+        sumfile.write('Biased average y4: {}\n'.format(temp_all.y[temp_all.z == 4].mean()))
+        sumfile.write('*******\n')
+
+        ### Individual and total bias
+
+        sumfile.write('Bias 0: {}\n'.format(abs((temp_all['y_1'].mean() - temp_all['y_0'].mean()) - (
+                temp_all.y[temp_all.z == 1].mean() - temp_all.y[temp_all.z == 0].mean()))))
+        sumfile.write('Bias 1: {}\n'.format(abs((temp_all['y_2'].mean() - temp_all['y_0'].mean()) - (
+                temp_all.y[temp_all.z == 2].mean() - temp_all.y[temp_all.z == 0].mean()))))
+        sumfile.write('Bias 2: {}\n'.format(abs((temp_all['y_3'].mean() - temp_all['y_0'].mean()) - (
+                temp_all.y[temp_all.z == 3].mean() - temp_all.y[temp_all.z == 0].mean()))))
+        sumfile.write('Bias 3: {}\n'.format(abs((temp_all['y_4'].mean() - temp_all['y_0'].mean()) - (
+                temp_all.y[temp_all.z == 4].mean() - temp_all.y[temp_all.z == 0].mean()))))
+
+        b1 = abs((temp_all.y[temp_all.z == 1].mean() - temp_all.y[temp_all.z == 0].mean()) - (
+                temp_all.y_1 - temp_all.y_0).mean())
+        b2 = abs((temp_all.y[temp_all.z == 2].mean() - temp_all.y[temp_all.z == 0].mean()) - (
+                temp_all.y_2 - temp_all.y_0).mean())
+        b3 = abs((temp_all.y[temp_all.z == 3].mean() - temp_all.y[temp_all.z == 0].mean()) - (
+                temp_all.y_3 - temp_all.y_0).mean())
+        b4 = abs((temp_all.y[temp_all.z == 4].mean() - temp_all.y[temp_all.z == 0].mean()) - (
+                temp_all.y_4 - temp_all.y_0).mean())
+        sumfile.write('*******\n')
+
+        sumfile.write('Bias 0: {}\n'.format(b1))
+        sumfile.write('Bias 1: {}\n'.format(b2))
+        sumfile.write('Bias 2: {}\n'.format(b3))
+        sumfile.write('Bias 3: {}\n'.format(b4))
+        sumfile.write('*******\n')
+
+        b1 = abs((temp_all.y[temp_all.z == 1].mean() - temp_all.y[temp_all.z == 0].mean()) - (
+                temp_all.y_1 - temp_all.y_0).mean()) / abs(temp_all.y_1 - temp_all.y_0).mean() * 100
+        b2 = abs((temp_all.y[temp_all.z == 2].mean() - temp_all.y[temp_all.z == 0].mean()) - (
+                temp_all.y_2 - temp_all.y_0).mean()) / abs(temp_all.y_2 - temp_all.y_0).mean() * 100
+        b3 = abs((temp_all.y[temp_all.z == 3].mean() - temp_all.y[temp_all.z == 0].mean()) - (
+                temp_all.y_3 - temp_all.y_0).mean()) / abs(temp_all.y_3 - temp_all.y_0).mean() * 100
+        b4 = abs((temp_all.y[temp_all.z == 4].mean() - temp_all.y[temp_all.z == 0].mean()) - (
+                temp_all.y_4 - temp_all.y_0).mean()) / abs(temp_all.y_4 - temp_all.y_0).mean() * 100
+        sumfile.write('*******\n')
+
+        sumfile.write('Bias 0 perc: {}\n'.format(b1))
+        sumfile.write('Bias 1 perc: {}\n'.format(b2))
+        sumfile.write('Bias 2 perc: {}\n'.format(b3))
+        sumfile.write('Bias 3 perc: {}\n'.format(b4))
+        sumfile.write('total: {}\n'.format(b1 + b2 + b3 + b4))
+        sumfile.write('*******\n')
+
+    ### Individual histograms
+
+    '''temp_all.y_0.hist(bins=1000)
+    temp_all.y[temp_all.z == 0].hist(bins=1000)
+
+    ax = temp_all.y_1.hist(bins=1000)
+    temp_all.y[temp_all.z == 1].hist(bins=1000)
+    ax.legend(['Y1', 'Y[T=1]']);
+    fig = ax.get_figure()
+    fig.savefig('{}_y1_y_1.pdf'.format(bias_size))
+
+    print('Y_1 mean and std: {}, {}'.format(covars_tab.y_1.mean(), covars_tab.y_1.std()))
+    print('Y[T=1] mean and std: {}, {}'.format(covars_tab.y[covars_tab.z == 1].mean(),
+                                               covars_tab.y[covars_tab.z == 1].std()))
+
+    temp_all.y_2.hist(bins=1000)
+    temp_all.y[temp_all.z == 2].hist(bins=1000)
+
+    temp_all.y_3.hist(bins=100)
+    temp_all.y[temp_all.z == 3].hist(bins=100)
+
+    temp_all.y_4.hist(bins=100)
+    temp_all.y[temp_all.z == 4].hist(bins=100)
+
+    ### ATE histograms. THIS IS CONCEPTUALLY WRONG!!!!
+
+    ax = (temp_all.y_1 - temp_all.y_0).hist(bins=1000)
+    (temp_all.y[temp_all.z == 1] - temp_all.y[temp_all.z == 0]).hist(bins=1000)
+    ax.legend(['{}_ATE1-ATE0', 'ATE[T=1]-ATE[T=0]'.format(bias_size)]);
+
+    (temp_all.y_2 - temp_all.y_0).hist(bins=1000)
+    (temp_all.y[temp_all.z == 2] - temp_all.y[temp_all.z == 0]).hist(bins=1000)
+
+    (temp_all.y_3 - temp_all.y_0).hist(bins=1000)
+    (temp_all.y[temp_all.z == 3] - temp_all.y[temp_all.z == 0]).hist(bins=1000)
+
+    (temp_all.y_4 - temp_all.y_0).hist(bins=1000)
+    (temp_all.y[temp_all.z == 4] - temp_all.y[temp_all.z == 0]).hist(bins=1000)'''
+
+
 if dataset=='ihdp':
     bias_size=10
-    n_confs=2
-    data_size=None
 
     # Output dir
     output_dir = os.path.join(output_parent_dir, dataset, '{}_treats/'.format(num_treats))
@@ -104,11 +216,14 @@ if dataset=='ihdp':
         covars_tab['y'] = y
         covars_tab['z'] = z.astype(int)
 
-        temp_all = pd.concat([temp_all, covars_tab], axis=0)
-
         filename = os.path.join(output_dir, 'ihdp_{}.csv'.format(i))
+        os.makedirs(output_dir, exist_ok=True)
         covars_tab.to_csv(filename)
 
+        # Accumulate dataset to compute statistics
+        temp_all = pd.concat([temp_all, covars_tab], axis=0)
+
+    analyse_generated_data(temp_all,output_dir)
     print('Done ihdp')
 
 elif dataset=='synthetic':
@@ -118,10 +233,6 @@ elif dataset=='synthetic':
                 }
 
     for main_param in ['bias', 'data_size', 'n_confs']:
-        #print(main_param)
-        #print(var_dict[main_param]['bias'])
-        #print(var_dict[main_param]['n_confs'])
-        #print(var_dict[main_param]['data_size'])
 
         bias = var_dict[main_param]['bias']
         n_confs = var_dict[main_param]['n_confs']
@@ -131,13 +242,12 @@ elif dataset=='synthetic':
             output_dir = os.path.join(output_parent_dir, dataset, '{}_treats/'.format(num_treats), main_param, str(i))
             print(output_dir)
 
-            for j in range(num_reps):
-                # Generate covariates
+            for data_size_val in data_size:
 
                 columns = ['x{}'.format(i) for i in range(30)]+['mu_0', 'mu_1','mu_2', 'mu_3', 'mu_4', 'y_0', 'y_1', 'y_2', 'y_3', 'y_4', 'y', 'z']
                 temp_all = pd.DataFrame(columns=columns)
 
-                for data_size_val in data_size:
+                for j in range(num_reps):
                     X = np.random.rand(data_size_val, num_covars)
                     z = np.random.randint(low=0, high=num_treats, size=(data_size_val,1))
                     y = np.random.randn(data_size_val,1)
@@ -152,15 +262,20 @@ elif dataset=='synthetic':
                     mu_3 = np.random.randn(data_size_val,1)
                     mu_4 = np.random.randn(data_size_val,1)
 
-                    data = np.concatenate([X,mu_0, mu_1, mu_2, mu_3, mu_4, y0, y1, y2, y3, y4, y, z], axis=1)
-                    data = pd.DataFrame(data, columns=columns)
+                    covars_tab = np.concatenate([X,mu_0, mu_1, mu_2, mu_3, mu_4, y0, y1, y2, y3, y4, y, z], axis=1)
+                    covars_tab = pd.DataFrame(covars_tab, columns=columns)
 
                     filename = os.path.join(output_dir, 'ihdp_{}.csv'.format(j))
                     os.makedirs(output_dir, exist_ok=True)
-                    data.to_csv(filename)
+                    covars_tab.to_csv(filename)
 
+                    # Accumulate dataset to compute statistics
+                    temp_all = pd.concat([temp_all, covars_tab], axis=0)
+
+                analyse_generated_data(temp_all, output_dir)
 
     print('Done synthetic')
 
 else:
     sys.exit('Wrong dataset')
+
