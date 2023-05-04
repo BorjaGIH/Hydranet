@@ -232,7 +232,8 @@ elif dataset=='synthetic':
                 # Parameters
                 sigma=1
 
-                # Covariates
+                ############################### Option 1 my option
+                '''# Covariates
                 X = np.random.rand(data_size, num_covars)
                 X = pd.DataFrame(X, columns=['x{}'.format(i) for i in range(num_covars)])
 
@@ -244,30 +245,55 @@ elif dataset=='synthetic':
                 z = np.random.randint(low=0, high=num_treats, size=(data_size,1))
                 z_f = treatment_assignment_op(z, num_treats)
 
-
                 # Output
-                beta = 0.01*np.random.randn(num_covars)
-                beta2 = 0.1*np.random.randn(n_confs+1)
-                #f = lambda x, tt: np.sqrt(np.abs(np.matmul(x, beta) + bias*np.matmul(np.c_[x[:,0:n_confs],tt**4], beta2))) # + 2*tt**2
+                beta = 0.01*np.ones(num_covars+1)
+                beta2 = 0.05*np.random.randn(n_confs)
+                # Version 0
                 f = lambda x,t: np.matmul(np.c_[x], beta) + bias*np.matmul(np.c_[x[:,0:n_confs],t**2],beta2)**3 + bias*np.matmul(np.c_[x[:,0:n_confs],t],beta2)
-                f = lambda x,t: np.matmul(np.c_[x], beta) + bias*sum(x[:,0:n_confs])**3 + bias*sum(x[:,0:n_confs])
-
-                # Compute true effect
+                # Other trials
+                f = lambda x, tt: np.sqrt(np.abs(np.matmul(x, beta) + bias*np.matmul(np.c_[x[:,0:n_confs],tt**4], beta2))) # + 2*tt**2
+                f = lambda x,t: np.matmul(np.c_[x], beta) + bias*np.matmul(np.c_[x[:,0:n_confs],t**2],beta2)**3 + bias*np.matmul(np.c_[x[:,0:n_confs],t],beta2)
+                f = lambda x,t: np.abs(np.matmul(np.c_[x,t**2], beta)) + np.sqrt(np.abs(bias*np.matmul(sum(x[:,0:n_confs]), beta2)**2)))
+                
+                # True effect
                 mu_0 = f(X.to_numpy(), 0 * np.ones(X.shape[0])).reshape(-1,1)
                 mu_1 = f(X.to_numpy(), 1 * np.ones(X.shape[0])).reshape(-1,1)
                 mu_2 = f(X.to_numpy(), 2 * np.ones(X.shape[0])).reshape(-1,1)
                 mu_3 = f(X.to_numpy(), 3 * np.ones(X.shape[0])).reshape(-1,1)
                 mu_4 = f(X.to_numpy(), 4 * np.ones(X.shape[0])).reshape(-1,1)
+                ###############################'''
+
+                ############################### Option 2 paper option
+                # Baseline
+                u0 = np.random.uniform(size=(1,num_covars))
+                v0 = u0/np.linalg.norm(u0)
+
+                # Covariates
+                X = np.random.uniform(-1,1,size=(data_size, num_covars))
+                X = pd.DataFrame(X, columns=['x{}'.format(i) for i in range(num_covars)])
+
+                # Treatment
+                sel_covar_names = ['x{}'.format(i) for i in range(n_confs)]
+                covars = X[sel_covar_names]
+                z_ini = covars**2
+                z = (num_treats * ((z_ini - z_ini.min()) / (z_ini.max() - z_ini.min()))).astype(int)
+                z = np.random.randint(low=0, high=num_treats, size=(data_size, 1))
+                z_f = treatment_assignment_op(z, num_treats)
 
                 # Output
-                '''beta = np.random.randn(num_covars)
-                beta2 = np.random.randn(n_confs)
-                f = lambda x,t: np.matmul(np.c_[x,t], beta) + bias*np.matmul(np.c_[x[:,0:n_confs],t],beta2)
+                uv = np.random.uniform(size=(1, num_covars))
+                vv = uv / np.linalg.norm(uv)
+                ut = np.random.uniform(size=(1, num_covars))
+                vt = ut / np.linalg.norm(ut)
+                f = lambda x: 100*np.matmul(v0,x.T) + 0.2*np.matmul(vv,x.T) + np.matmul(vt,x.T)
+
+                # True effect
                 mu_0 = f(X.to_numpy()).reshape(-1, 1)
                 mu_1 = f(X.to_numpy()).reshape(-1, 1)
                 mu_2 = f(X.to_numpy()).reshape(-1, 1)
                 mu_3 = f(X.to_numpy()).reshape(-1, 1)
-                mu_4 = f(X.to_numpy()).reshape(-1, 1)'''
+                mu_4 = f(X.to_numpy()).reshape(-1, 1)
+                ###############################
 
 
                 # Sample from normal distribution
