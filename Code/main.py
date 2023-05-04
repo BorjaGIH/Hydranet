@@ -359,133 +359,191 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
 
 
                 
-def make_resulttable(train_test, n_replication, n_reps):
-    
-    result_dict = {'N': [], 'Avg true value': [], 'Avg biased estimate': [], 'Naive estimator error': [],
-                   'baseline': {'Avg hydranet est.': [], 'Hydranet error': []},
-                   'targeted_regularization': { 'Avg hydranet est.': [], 'Hydranet error': []},
-                   'Other params': [],
-                 }
-    
-    estim_dict = {
-            'baseline': [], 'targeted_regularization': []
-            }
-    
-    #for model in ['baseline']:
-    for model in ['baseline', 'targeted_regularization']:
-        true_val, biased_val = [], []
-        for rep in range(n_replication):
-            q_t0, q_t1, q_t2, g, t, y_dragon, index, eps = load_data(rep, model, train_test, n_reps)
-            a, b, c = load_truth(rep, n_reps)
-            mu_0, mu_1, mu_2 = a[index], b[index], c[index]
-            data_len = len(y_dragon)
+def analyse_results(input_dir, output_dir):
 
-            truth1_0 = (mu_1 - mu_0).mean()
-            truth2_0 = (mu_2 - mu_0).mean()
-            
-            biased1_0 = y_dragon[t==1].mean() - y_dragon[t==0].mean()
-            biased2_0 = y_dragon[t==2].mean() - y_dragon[t==0].mean()
+    result_dict = {'train':
+                    {'true': [],
+                    'naive': [],
+                    'b2bd': {'ate1_0': {'baseline': [], 'targeted_regularization': []},
+                            'ate2_0': {'baseline': [], 'targeted_regularization': []},
+                            'ate3_0': {'baseline': [], 'targeted_regularization': []},
+                            'ate4_0': {'baseline': [], 'targeted_regularization': []}},
+                    'T_learn': [],
+                    'Hydranet': {'baseline': [], 'targeted_regularization': []}},
+                   'test':
+                    {'true': [],
+                    'naive': [],
+                    'b2bd': {'ate1_0': {'baseline': [], 'targeted_regularization': []},
+                            'ate2_0': {'baseline': [], 'targeted_regularization': []},
+                            'ate3_0': {'baseline': [], 'targeted_regularization': []},
+                            'ate4_0': {'baseline': [], 'targeted_regularization': []}},
+                    'T_learn': [],
+                    'Hydranet': {'baseline': [], 'targeted_regularization': []}},
+                   }
+    estimator = ['b2bd', 'T_learn', 'Hydranet']
 
-            psi_vn, psi_n = get_estimate(q_t0, q_t1, q_t2, g, t, y_dragon, index, eps, truncate_level=0.)
+    input_folders = sorted(os.listdir(input_dir))
 
-            true_val.append([truth1_0, truth2_0])
-            biased_val.append([biased1_0, biased2_0])
-            estim_dict[model].append(psi_n)
-        
-        # Compute error, from average true and average estimated values
-        true_val = np.asarray(true_val)
-        biased_val = np.asarray(biased_val)
-        
-        biased_error = abs(true_val - biased_val).sum(axis=1) #change to sum
-        biased_error_val = biased_error.mean()
-        hydranet_error = abs(estim_dict[model] - true_val).sum(axis=1)
-        hydranet_error_val = hydranet_error.mean()
-        
-        # Check big-small error t-reg difference
-        ####################################################
-        '''if model=='baseline':
-            baseline_low = np.where(hydranet_error<hydranet_error_val)[0]
-            baseline_high = np.where(hydranet_error>hydranet_error_val)[0]
-        
-        hydranet_error = hydranet_error[baseline_high]
-        hydranet_error_val = hydranet_error.mean()'''
-        ####################################################
-        
-        # Compute error, from average true and average estimated values
-        result_dict['N'] = n_reps
-        result_dict['Avg true value'] = np.mean(true_val, axis=0)
-        result_dict['Avg biased estimate'] = np.mean(biased_val, axis=0)
-        result_dict['Naive estimator error'] = biased_error_val
-        result_dict[model]['Avg hydranet est.'] = np.mean(estim_dict[model], axis=0)
-        result_dict[model]['Hydranet error'] = hydranet_error_val
-        
-        
-        # Compute bootstrap 95% CI intervals for the error
-        alg_name = '{} est error CIs'.format(model)
-        naive_ci_l, naive_ci_u = bootstrap((biased_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
-        hydra_ci_l, hydra_ci_u = bootstrap((hydranet_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
-        result_dict['Naive est error CIs'] = naive_ci_l, naive_ci_u
-        result_dict[alg_name] = hydra_ci_l, hydra_ci_u
-        
-    
+    for idx, folder in enumerate(input_folders):
+        # Repetition level (0, 1, 2...)
+        # True data
+        truth_dat_path = os.path.join(input_dir, folder, 'simulation_outputs.npz')
+        a, b, c, d, e = load_truth(truth_dat_path)
+
+        for estim in estimator:
+            # Estimator level (0: b2bd, Hydra, T-learn; 1: b2bd, Hydra, T-learn; ...)
+            # Result data
+            estim_dat_path = os.path.join(input_dir, folder, estim)
+
+            for split in ['train', 'test']:
+                # Split level (0: b2bd: train, test; 0: Hydra: train, test; 0: T-learn: train, test...)
+
+                if estim=='Hydranet':
+                    base_dat_path = os.path.join(estim_dat_path, 'baseline', ('0_replication_' + split + '.npz'))
+
+                    # From Hydranet take also the TRUE value and the BIASED value
+                    q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+                    mu_0, mu_1, mu_2, mu_3, mu_4 = a[index], b[index], c[index], d[index], e[index]
+
+                    truth1_0 = (mu_1 - mu_0).mean()
+                    truth2_0 = (mu_2 - mu_0).mean()
+                    truth3_0 = (mu_3 - mu_0).mean()
+                    truth4_0 = (mu_4 - mu_0).mean()
+
+                    biased1_0 = y[t == 1].mean() - y[t == 0].mean()
+                    biased2_0 = y[t == 2].mean() - y[t == 0].mean()
+                    biased3_0 = y[t == 3].mean() - y[t == 0].mean()
+                    biased4_0 = y[t == 4].mean() - y[t == 0].mean()
+
+                    result_dict[split]['true'].append([truth1_0, truth2_0, truth3_0, truth4_0])
+                    result_dict[split]['naive'].append([biased1_0, biased2_0, biased3_0, biased4_0])
+
+                    for model in ['baseline', 'targeted_regularization']:
+                        # Model level (when applicable)
+                        base_dat_path = os.path.join(estim_dat_path, model, ('0_replication_' + split + '.npz'))
+                        q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+                        # Compute estimator
+                        psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g,truncate_level=0.)
+
+                        result_dict[split][estim][model].append(psi)
+
+
+                elif estim=='b2bd':
+                    for ate in ['ate1_0', 'ate2_0', 'ate3_0', 'ate4_0']:
+                        for model in ['baseline', 'targeted_regularization']:
+                            # Model level (when applicable)
+                            base_dat_path = os.path.join(estim_dat_path, ate, model, ('0_replication_' + split + '.npz'))
+                            q_t0, q_t1, g, y, t, index = load_data_dr(base_dat_path)
+                            # Compute estimator
+                            psi = psi_naive_dr(q_t0, q_t1, g,truncate_level=0.)
+
+                            result_dict[split][estim][ate][model].append(psi)
+
+                elif estim=='T_learn':
+                    base_dat_path = os.path.join(estim_dat_path, 'baseline', ('0_replication_' + split + '.npz'))
+                    q_t0, q_t1, q_t2, q_t3, q_t4, y, t, index = load_data_t(base_dat_path)
+                    # Compute estimator
+                    psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g,truncate_level=0.)
+
+                    result_dict[split][estim].append(psi)
+
+                else:
+                    sys.exit('wrong estimator list')
+
     return result_dict
 
+    '''        
+    # Compute error, from average true and average estimated values
+    true_val = np.asarray(true_val)
+    biased_val = np.asarray(biased_val)
+    
+    biased_error = abs(true_val - biased_val).sum(axis=1) #change to sum
+    biased_error_val = biased_error.mean()
+    hydranet_error = abs(estim_dict[model] - true_val).sum(axis=1)
+    hydranet_error_val = hydranet_error.mean()
+    
+    # Check big-small error t-reg difference
+    ####################################################
+    if model=='baseline':
+        baseline_low = np.where(hydranet_error<hydranet_error_val)[0]
+        baseline_high = np.where(hydranet_error>hydranet_error_val)[0]
+    
+    hydranet_error = hydranet_error[baseline_high]
+    hydranet_error_val = hydranet_error.mean()
+    ####################################################
+    
+    # Compute error, from average true and average estimated values
+    result_dict['N'] = n_reps
+    result_dict['Avg true value'] = np.mean(true_val, axis=0)
+    result_dict['Avg biased estimate'] = np.mean(biased_val, axis=0)
+    result_dict['Naive estimator error'] = biased_error_val
+    result_dict[model]['Avg hydranet est.'] = np.mean(estim_dict[model], axis=0)
+    result_dict[model]['Hydranet error'] = hydranet_error_val
+    
+    # Compute bootstrap 95% CI intervals for the error
+    alg_name = '{} est error CIs'.format(model)
+    naive_ci_l, naive_ci_u = bootstrap((biased_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
+    hydra_ci_l, hydra_ci_u = bootstrap((hydranet_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
+    result_dict['Naive est error CIs'] = naive_ci_l, naive_ci_u
+    result_dict[alg_name] = hydra_ci_l, hydra_ci_u
+#'''
 
 def main():
 
     # Parse arguments
     num_treats = 5 # or 10
     dataset = 'synthetic' # or 'synthetic'
-    main_param = 'n_confs' # or data_size or n_confs
+    main_param = 'data_size' # or data_size or n_confs
     device = 'GPU'
-    input_dir = '/home/bvelasco/Hydranet/Input_data/'
-    output_dir = '/home/bvelasco/Hydranet/Results/Results_NN/'
+    input_dir = '/home/bvelasco/Hydranet/'
+    output_dir = '/home/bvelasco/Hydranet/Results/'
     loss = hydranet_loss
     loss_dr = dragonnet_loss_binarycross_dr
     val_split = 0.2
     batch_size = 100
-    Train = True
-    Analyze = False
+    Train = False
+    Analyze = True
+
+
+    # System arguments
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Silence tensorflow warnings
-
-
-    main_param_dict = {'bias':[1,5,10,30],
+    main_param_dict = {'bias':[2,5,10,30],
                         'n_confs':[2, 5, 10, 18],
                         'data_size':[1000, 2000, 5000, 10000]
                       }
     tf.compat.v1.disable_eager_execution()
 
-
     # Set seeds
     random.seed(1)
     np.random.seed(1)
 
-    # Configure GPU resources if training in GPU
-    if device=='CPU':
-        print('Training in CPU')
-    elif device=='GPU':
-        #tf.compat.v1.set_random_seed(1)
-        print('Training in GPU')
-        gpus = tf.config.list_physical_devices('GPU')
-        if gpus:
-            try:
-                # Currently, memory growth needs to be the same across GPUs
-                for gpu in gpus:
-                    tf.config.experimental.set_memory_growth(gpu, True)
-                logical_gpus = tf.config.list_logical_devices('GPU')
-                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-            except RuntimeError as e:
-                # Memory growth must be set before GPUs have been initialized
-                print(e)
-        else:
-            print('Device is set to "GPU" but no GPU was found')
-            sys.exit()
-
-
     # Train
     if Train:
         print('Train')
-        
+        # Configure GPU resources if training in GPU
+        if device == 'CPU':
+            print('Training in CPU')
+        elif device == 'GPU':
+            # tf.compat.v1.set_random_seed(1)
+            print('Training in GPU')
+            gpus = tf.config.list_physical_devices('GPU')
+            if gpus:
+                try:
+                    # Currently, memory growth needs to be the same across GPUs
+                    for gpu in gpus:
+                        tf.config.experimental.set_memory_growth(gpu, True)
+                    logical_gpus = tf.config.list_logical_devices('GPU')
+                    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+                except RuntimeError as e:
+                    # Memory growth must be set before GPUs have been initialized
+                    print(e)
+            else:
+                print('Device is set to "GPU" but no GPU was found')
+                sys.exit()
+
+        input_dir = os.path.join(input_dir, 'Input_data/')
+        output_dir = os.path.join(output_dir, 'Results_NN/')
+
         with tf.device(device):
             if dataset=='synthetic':
                 for val in main_param_dict[main_param]:
@@ -504,12 +562,26 @@ def main():
     # Analyze
     if Analyze:
         print('Analyze')
-        #result_table = []
+        input_dir = os.path.join(input_dir, 'Results/Results_NN/')
+        output_dir = os.path.join(output_dir, 'Results_CI/')
 
-        #result_table.append(Parallel(n_jobs=15)(delayed(make_resulttable)(train_test=train_or_test, n_replication=15, n_reps=n_rep) for n_rep in [1]))
-        #pandas.DataFrame(result_table[0]).to_csv('/home/bvelasco/Hydranet_script/Results/Results_CI/ihdp/3_treats/results_{}.csv'.format(train_or_test))
+        if dataset == 'synthetic':
+            for val in main_param_dict[main_param]:
+                # Build paths
+                input_dir_ = input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                res = analyse_results(input_dir_,output_dir_)
+
+        elif dataset == 'ihdp':
+            # Build paths
+            input_dir_ = input_dir + dataset + '/{}_treats/'.format(num_treats)
+            output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats)
+            res = analyse_results(input_dir_,output_dir_)
+
     else:
         print('Do not analyze')
+
+    print('Done')
     
 if __name__ == '__main__':
     main()

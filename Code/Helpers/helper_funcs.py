@@ -76,7 +76,7 @@ def split_output_t(yt_hat, t, y, y_scaler, x, index):
     return {'q_t0': q_t0, 'q_t1': q_t1, 'q_t2': q_t2, 'q_t3': q_t3, 'q_t4': q_t4, 't': t, 'y': y, 'x': x,
             'index': index}
 
-def load_truth():
+def load_truth(file_path):
     """
     loading ground truth data
     """
@@ -85,17 +85,58 @@ def load_truth():
     mu_0 = data['mu_0']
     mu_1 = data['mu_1']
     mu_2 = data['mu_2']
+    mu_3 = data['mu_3']
+    mu_4 = data['mu_4']
 
-    return mu_0, mu_1, mu_2
+    return mu_0, mu_1, mu_2, mu_3, mu_4
 
 
-def load_data():
+def load_data(file_path):
     """
     loading train test experiment results
     """
+    data = load(file_path)
+    q_t0 = data['q_t0'].reshape(-1, 1)
+    q_t1 = data['q_t1'].reshape(-1, 1)
+    q_t2 = data['q_t2'].reshape(-1, 1)
+    q_t3 = data['q_t3'].reshape(-1, 1)
+    q_t4 = data['q_t4'].reshape(-1, 1)
+    index = data['index'].reshape(-1, 1)
+    g = data['g'].reshape(-1, 1)
+    y = data['y'].reshape(-1,1)
+    t = data['t']
 
-    return data['q_t0'].reshape(-1, 1), data['q_t1'].reshape(-1, 1), data['q_t2'].reshape(-1, 1), data['g'].reshape(-1, 1), \
-           data['t'].reshape(-1, 1), data['y'].reshape(-1, 1), data['index'].reshape(-1, 1), data['eps'].reshape(-1, 1)
+    return q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index
+
+def load_data_dr(file_path):
+    """
+    loading train test experiment results
+    """
+    data = load(file_path)
+    q_t0 = data['q_t0'].reshape(-1, 1)
+    q_t1 = data['q_t1'].reshape(-1, 1)
+    index = data['index'].reshape(-1, 1)
+    g = data['g'].reshape(-1, 1)
+    y = data['y'].reshape(-1,1)
+    t = data['t']
+
+    return q_t0, q_t1, g, y, t, index
+
+def load_data_t(file_path):
+    """
+    loading train test experiment results
+    """
+    data = load(file_path)
+    q_t0 = data['q_t0'].reshape(-1, 1)
+    q_t1 = data['q_t1'].reshape(-1, 1)
+    q_t2 = data['q_t2'].reshape(-1, 1)
+    q_t3 = data['q_t3'].reshape(-1, 1)
+    q_t4 = data['q_t4'].reshape(-1, 1)
+    index = data['index'].reshape(-1, 1)
+    y = data['y'].reshape(-1,1)
+    t = data['t']
+
+    return q_t0, q_t1, q_t2, q_t3, q_t4, y, t, index
 
 
 def truncate_by_g(attribute, g, level=0.01):
@@ -103,7 +144,7 @@ def truncate_by_g(attribute, g, level=0.01):
     if level==0.:
         return attribute
     else:
-        g = g.reshape(3,len(attribute)).T
+        g = g.reshape(5,len(attribute)).T
         g_ind = np.sum(g<level, axis=1)
         #keep_these = np.logical_and(g >= level, g <= 1.-level)
         return attribute[g_ind==0]
