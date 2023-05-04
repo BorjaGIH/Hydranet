@@ -435,9 +435,9 @@ def main():
 
     # Parse arguments
     num_treats = 5 # or 10
-    dataset = 'ihdp' # or 'synthetic'
-    main_param = 'bias' # or data_size or n_confs
-    device = 'CPU'
+    dataset = 'synthetic' # or 'synthetic'
+    main_param = 'n_confs' # or data_size or n_confs
+    device = 'GPU'
     input_dir = '/home/bvelasco/Hydranet/Input_data/'
     output_dir = '/home/bvelasco/Hydranet/Results/Results_NN/'
     loss = hydranet_loss
@@ -446,6 +446,7 @@ def main():
     batch_size = 100
     Train = True
     Analyze = False
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Silence tensorflow warnings
 
 
     main_param_dict = {'bias':[1,5,10,30],

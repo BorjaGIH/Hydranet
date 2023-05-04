@@ -1,0 +1,29 @@
+Percentage of T==0: 0.1995
+Percentage of T==1: 0.196
+Percentage of T==2: 0.1996
+Percentage of T==3: 0.2035
+Percentage of T==4: 0.2014
+*******
+True average y_0: -1.1503988217438583
+True average y_1: -1.7880237276887594
+True average y_2: -3.048229215527637
+True average y_3: -12.356302982326161
+True average y_4: -62.17895502151982
+*******
+Biased average y0: -1.1360420883667208
+Biased average y1: -1.6852498710386998
+Biased average y2: -3.151438399138609
+Biased average y3: -12.451785498997433
+Biased average y4: -61.47795143459277
+*******
+Bias 1_0: 0.08841712327292206
+Bias 2_0: 0.11756591698810936
+Bias 3_0: 0.10983925004840955
+Bias 4_0: 0.6866468535499166
+*******
+Bias 0 perc: 4.127203163003983
+Bias 1 perc: 2.262499206627218
+Bias 2 perc: 0.5188547625757014
+Bias 3 perc: 0.6958950152770477
+total: 7.604452147483951
+*******
