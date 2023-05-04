@@ -270,6 +270,19 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                                 mu_0=mu_0, mu_1=mu_1, mu_2=mu_2, mu_3=mu_3, mu_4=mu_4, mu_5=mu_5, mu_6=mu_6, mu_7=mu_7, mu_8=mu_8, mu_9=mu_9)
 
         ############# RUN THE DIFFERENT ESTIMATORS ##############
+
+        # T-learner
+        test_outputs_tlearn, train_output_tlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
+
+        output_dir_tlearn = os.path.join(simulation_output_dir, "T_learn/baseline")
+        os.makedirs(output_dir_tlearn, exist_ok=True)
+
+        # Save outputs for each split
+        for num, output in enumerate(test_outputs_tlearn):
+            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_test.npz".format(num)), **output)
+        for num, output in enumerate(train_output_tlearn):
+            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)
+
         # Hydranet baseline and Hydranet T-reg
         for is_targeted_regularization in [False, True]:
 
@@ -343,18 +356,6 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                 for num, output in enumerate(train_output_b2bd):
                     np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)
 
-
-        # T-learner
-        test_outputs_tlearn, train_output_tlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
-
-        output_dir_tlearn = os.path.join(simulation_output_dir, "T_learn/baseline")
-        os.makedirs(output_dir_tlearn, exist_ok=True)
-
-        # Save outputs for each split
-        for num, output in enumerate(test_outputs_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_test.npz".format(num)), **output)
-        for num, output in enumerate(train_output_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)
 
 
                 
