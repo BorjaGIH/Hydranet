@@ -553,6 +553,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir):
                labels=['Naive', 'B2BD Baseline', 'B2BD T-reg', 'T-learner', 'Hydranet Baseline', 'Hydranet T-reg'])
     plt.xlabel('Error')
     plt.ylabel(main_param)
+    os.makedirs(os.path.join(output_dir, main_param), exist_ok=True)
     fig.savefig(os.path.join(output_dir, main_param + '_in-sample'))
     #plt.show()
 
@@ -790,8 +791,8 @@ def main():
 
     # Parse arguments
     num_treats = 5 # or 10
-    dataset = 'ihdp' # or 'synthetic'
-    main_param = 'n_confs' # or data_size or n_confs
+    dataset = 'synthetic' # or 'synthetic'
+    main_param = 'data_size' # or data_size or n_confs
     device = 'GPU'
     input_dir = '/home/bvelasco/Hydranet/'
     output_dir = '/home/bvelasco/Hydranet/Results/'
@@ -804,12 +805,12 @@ def main():
 
 
     # System arguments
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Silence tensorflow warnings
-    main_param_dict = {'bias':[5,10,30],
+    
+    main_param_dict = {'bias':[2,5,10,30],
                         'n_confs':[2, 5, 10, 18],
                         'data_size':[1000, 2000, 5000, 10000]
                       }
-    all_res_dict = {'bias': { 5:[], 10:[], 30:[]},
+    all_res_dict = {'bias': {2:[], 5:[], 10:[], 30:[]},
                        'n_confs': {2:[], 5:[], 10:[], 18:[]},
                        'data_size': {1000:[], 2000:[], 5000:[], 10000:[]}
                        }
