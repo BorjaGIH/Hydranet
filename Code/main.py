@@ -1,6 +1,8 @@
 import os
 import sys
 
+import pandas as pd
+
 from shared_pkgs.imports import *
 from Helpers.helper_funcs import *
 from Neural_Net.neural_net import *
@@ -356,34 +358,35 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                 for num, output in enumerate(train_output_b2bd):
                     np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)
 
-
-
                 
-def analyse_results(input_dir, output_dir):
+def collect_results_syn(input_dir):
 
     result_dict = {'train':
                     {'true': [],
-                    'naive': [],
+                    'naive': {'baseline': []},
                     'b2bd': {'ate1_0': {'baseline': [], 'targeted_regularization': []},
                             'ate2_0': {'baseline': [], 'targeted_regularization': []},
                             'ate3_0': {'baseline': [], 'targeted_regularization': []},
                             'ate4_0': {'baseline': [], 'targeted_regularization': []}},
-                    'T_learn': [],
-                    'Hydranet': {'baseline': [], 'targeted_regularization': []}},
+                    'T_learn': {'baseline': []},
+                    'Hydranet': {'baseline': [], 'targeted_regularization': []}
+                     },
                    'test':
                     {'true': [],
-                    'naive': [],
+                    'naive': {'baseline': []},
                     'b2bd': {'ate1_0': {'baseline': [], 'targeted_regularization': []},
                             'ate2_0': {'baseline': [], 'targeted_regularization': []},
                             'ate3_0': {'baseline': [], 'targeted_regularization': []},
                             'ate4_0': {'baseline': [], 'targeted_regularization': []}},
-                    'T_learn': [],
-                    'Hydranet': {'baseline': [], 'targeted_regularization': []}},
+                    'T_learn': {'baseline': []},
+                    'Hydranet': {'baseline': [], 'targeted_regularization': []}
+                     },
                    }
-    estimator = ['b2bd', 'T_learn', 'Hydranet']
 
+    estimator = ['Hydranet', 'b2bd', 'T_learn']
     input_folders = sorted(os.listdir(input_dir))
 
+    # Retrieve values
     for idx, folder in enumerate(input_folders):
         # Repetition level (0, 1, 2...)
         # True data
@@ -416,7 +419,7 @@ def analyse_results(input_dir, output_dir):
                     biased4_0 = y[t == 4].mean() - y[t == 0].mean()
 
                     result_dict[split]['true'].append([truth1_0, truth2_0, truth3_0, truth4_0])
-                    result_dict[split]['naive'].append([biased1_0, biased2_0, biased3_0, biased4_0])
+                    result_dict[split]['naive']['baseline'].append([biased1_0, biased2_0, biased3_0, biased4_0])
 
                     for model in ['baseline', 'targeted_regularization']:
                         # Model level (when applicable)
@@ -439,23 +442,61 @@ def analyse_results(input_dir, output_dir):
 
                             result_dict[split][estim][ate][model].append(psi)
 
+                    # Postprocess: join ates
+                    result_dict[split][estim]['baseline'] = list(zip(result_dict[split]['b2bd']['ate1_0']['baseline'], result_dict[split]['b2bd']['ate2_0']['baseline'], result_dict[split]['b2bd']['ate3_0']['baseline'], result_dict[split]['b2bd']['ate4_0']['baseline']))
+                    result_dict[split][estim]['targeted_regularization'] = list(zip(result_dict[split]['b2bd']['ate1_0']['targeted_regularization'], result_dict[split]['b2bd']['ate2_0']['targeted_regularization'], result_dict[split]['b2bd']['ate3_0']['targeted_regularization'], result_dict[split]['b2bd']['ate4_0']['targeted_regularization']))
+
+
                 elif estim=='T_learn':
                     base_dat_path = os.path.join(estim_dat_path, 'baseline', ('0_replication_' + split + '.npz'))
                     q_t0, q_t1, q_t2, q_t3, q_t4, y, t, index = load_data_t(base_dat_path)
                     # Compute estimator
                     psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g,truncate_level=0.)
 
-                    result_dict[split][estim].append(psi)
+                    result_dict[split][estim]['baseline'].append(psi)
 
                 else:
                     sys.exit('wrong estimator list')
+
+    # Postprocess: delete individual ates of dragonnet
+    for i in range(1,5):
+        del result_dict['train']['b2bd']['ate{}_0'.format(i)]
+        del result_dict['test']['b2bd']['ate{}_0'.format(i)]
+
+    # Compute averages
+    for estim in estimator:
+        # Estimator level (0: b2bd, Hydra, T-learn; 1: b2bd, Hydra, T-learn; ...)
+
+        for split in ['train', 'test']:
+            # Split level (0: b2bd: train, test; 0: Hydra: train, test; 0: T-learn: train, test...)
+
+            if estim == 'Hydranet':
+                # True and naive values
+                result_dict[split]['true'] = np.mean(result_dict[split]['true'], axis=0)
+                result_dict[split]['naive']['baseline'] = np.mean(result_dict[split]['naive']['baseline'], axis=0)
+                result_dict[split]['naive']['ae'] = np.sum(np.abs(result_dict[split]['true'] - result_dict[split]['naive']['baseline']))
+                result_dict[split]['naive']['pe'] = result_dict[split]['naive']['ae']/np.sum(result_dict[split]['true']) *100
+
+                for model in ['baseline', 'targeted_regularization']:
+                    result_dict[split][estim][model] = np.mean(result_dict[split][estim][model], axis=0)
+                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(np.abs(result_dict[split][estim][model] - result_dict[split]['true']))
+                    result_dict[split][estim]['{}_pe'.format(model)] = result_dict[split][estim]['{}_ae'.format(model)]/np.sum(result_dict[split]['true']) *100
+
+            elif estim == 'b2bd':
+                for model in ['baseline', 'targeted_regularization']:
+                    result_dict[split][estim][model] = np.mean(result_dict[split][estim][model], axis=0)
+                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(np.abs(result_dict[split][estim][model] - result_dict[split]['true']))
+                    result_dict[split][estim]['{}_pe'.format(model)] = result_dict[split][estim]['{}_ae'.format(model)]/np.sum(result_dict[split]['true']) *100
+
+            elif estim == 'T_learn':
+                result_dict[split][estim]['baseline'] = np.mean(result_dict[split][estim]['baseline'], axis=0)
+                result_dict[split][estim]['baseline_ae'] = np.sum(np.abs(result_dict[split][estim]['baseline']- result_dict[split]['true']))
+                result_dict[split][estim]['baseline_pe'] = result_dict[split][estim]['baseline_ae']/np.sum(result_dict[split]['true']) *100
 
     return result_dict
 
     '''        
     # Compute error, from average true and average estimated values
-    true_val = np.asarray(true_val)
-    biased_val = np.asarray(biased_val)
     
     biased_error = abs(true_val - biased_val).sum(axis=1) #change to sum
     biased_error_val = biased_error.mean()
@@ -488,12 +529,269 @@ def analyse_results(input_dir, output_dir):
     result_dict[alg_name] = hydra_ci_l, hydra_ci_u
 #'''
 
+
+def analyse_results_syn(all_res_dict, main_param, output_dir):
+    # Print figures and generate tables
+    reform = {(outerKey, innerKey): values for outerKey, innerDict in all_res_dict[main_param].items() for innerKey, values in innerDict.items()}
+    all_res_df = pd.DataFrame(reform)
+    df_train = all_res_df.iloc[:,all_res_df.columns.get_level_values(1)=='train']
+    df_test = all_res_df.iloc[:,all_res_df.columns.get_level_values(1)=='test']
+    df_train.columns = df_train.columns.droplevel(1)
+    df_test.columns = df_test.columns.droplevel(1)
+    df_train = df_train.T
+    df_test = df_test.T
+
+    fig, ax = plt.subplots()
+
+    line1, = ax.plot(df_train['naive'].apply(lambda x: x['ae']), marker='o')
+    line2, = ax.plot(df_train['b2bd'].apply(lambda x: x['baseline_ae']), marker='o')
+    line3, = ax.plot(df_train['b2bd'].apply(lambda x: x['targeted_regularization_ae']), marker='o')
+    line4, = ax.plot(df_train['T_learn'].apply(lambda x: x['baseline_ae']), marker='o')
+    line5, = ax.plot(df_train['Hydranet'].apply(lambda x: x['baseline_ae']), marker='o')
+    line6, = ax.plot(df_train['Hydranet'].apply(lambda x: x['targeted_regularization_ae']), marker='o')
+    plt.legend(handles=[line1, line2, line3, line4, line5, line6], \
+               labels=['Naive', 'B2BD Baseline', 'B2BD T-reg', 'T-learner', 'Hydranet Baseline', 'Hydranet T-reg'])
+    plt.xlabel('Error')
+    plt.ylabel(main_param)
+    fig.savefig(os.path.join(output_dir, main_param + '_in-sample'))
+    #plt.show()
+
+    fig, ax = plt.subplots()
+
+    line1, = ax.plot(df_test['naive'].apply(lambda x: x['ae']), marker='o')
+    line2, = ax.plot(df_test['b2bd'].apply(lambda x: x['baseline_ae']), marker='o')
+    line3, = ax.plot(df_test['b2bd'].apply(lambda x: x['targeted_regularization_ae']), marker='o')
+    line4, = ax.plot(df_test['T_learn'].apply(lambda x: x['baseline_ae']), marker='o')
+    line5, = ax.plot(df_test['Hydranet'].apply(lambda x: x['baseline_ae']), marker='o')
+    line6, = ax.plot(df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae']), marker='o')
+    plt.legend(handles=[line1, line2, line3, line4, line5, line6],\
+               labels=['Naive', 'B2BD Baseline', 'B2BD T-reg', 'T-learner', 'Hydranet Baseline', 'Hydranet T-reg'])
+    plt.xlabel('Percentual error')
+    plt.ylabel(main_param)
+    fig.savefig(os.path.join(output_dir, main_param + '_out-sample'))
+    #plt.show()
+
+
+def collect_results_ihdp(input_dir):
+    result_dict = {'train':
+                       {'true': [],
+                        'naive': {'baseline': []},
+                        'b2bd': {'ate1_0': {'baseline': [], 'targeted_regularization': []},
+                                 'ate2_0': {'baseline': [], 'targeted_regularization': []},
+                                 'ate3_0': {'baseline': [], 'targeted_regularization': []},
+                                 'ate4_0': {'baseline': [], 'targeted_regularization': []}},
+                        'T_learn': {'baseline': []},
+                        'Hydranet': {'baseline': [], 'targeted_regularization': []}
+                        },
+                   'test':
+                       {'true': [],
+                        'naive': {'baseline': []},
+                        'b2bd': {'ate1_0': {'baseline': [], 'targeted_regularization': []},
+                                 'ate2_0': {'baseline': [], 'targeted_regularization': []},
+                                 'ate3_0': {'baseline': [], 'targeted_regularization': []},
+                                 'ate4_0': {'baseline': [], 'targeted_regularization': []}},
+                        'T_learn': {'baseline': []},
+                        'Hydranet': {'baseline': [], 'targeted_regularization': []}
+                        },
+                   }
+
+    estimator = ['Hydranet', 'b2bd', 'T_learn']
+    input_folders = sorted(os.listdir(input_dir))
+
+    # Retrieve values
+    for idx, folder in enumerate(input_folders):
+        # Repetition level (0, 1, 2...)
+        # True data
+        truth_dat_path = os.path.join(input_dir, folder, 'simulation_outputs.npz')
+        a, b, c, d, e = load_truth(truth_dat_path)
+
+        for estim in estimator:
+            # Estimator level (0: b2bd, Hydra, T-learn; 1: b2bd, Hydra, T-learn; ...)
+            # Result data
+            estim_dat_path = os.path.join(input_dir, folder, estim)
+
+            for split in ['train', 'test']:
+                # Split level (0: b2bd: train, test; 0: Hydra: train, test; 0: T-learn: train, test...)
+
+                if estim == 'Hydranet':
+                    base_dat_path = os.path.join(estim_dat_path, 'baseline', ('0_replication_' + split + '.npz'))
+
+                    # From Hydranet take also the TRUE value and the BIASED value
+                    q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+                    mu_0, mu_1, mu_2, mu_3, mu_4 = a[index], b[index], c[index], d[index], e[index]
+
+                    truth1_0 = (mu_1 - mu_0).mean()
+                    truth2_0 = (mu_2 - mu_0).mean()
+                    truth3_0 = (mu_3 - mu_0).mean()
+                    truth4_0 = (mu_4 - mu_0).mean()
+
+                    biased1_0 = y[t == 1].mean() - y[t == 0].mean()
+                    biased2_0 = y[t == 2].mean() - y[t == 0].mean()
+                    biased3_0 = y[t == 3].mean() - y[t == 0].mean()
+                    biased4_0 = y[t == 4].mean() - y[t == 0].mean()
+
+                    result_dict[split]['true'].append([truth1_0, truth2_0, truth3_0, truth4_0])
+                    result_dict[split]['naive']['baseline'].append([biased1_0, biased2_0, biased3_0, biased4_0])
+
+                    for model in ['baseline', 'targeted_regularization']:
+                        # Model level (when applicable)
+                        base_dat_path = os.path.join(estim_dat_path, model, ('0_replication_' + split + '.npz'))
+                        q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+                        # Compute estimator
+                        psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.)
+
+                        result_dict[split][estim][model].append(psi)
+
+
+                elif estim == 'b2bd':
+                    for ate in ['ate1_0', 'ate2_0', 'ate3_0', 'ate4_0']:
+                        for model in ['baseline', 'targeted_regularization']:
+                            # Model level (when applicable)
+                            base_dat_path = os.path.join(estim_dat_path, ate, model,
+                                                         ('0_replication_' + split + '.npz'))
+                            q_t0, q_t1, g, y, t, index = load_data_dr(base_dat_path)
+                            # Compute estimator
+                            psi = psi_naive_dr(q_t0, q_t1, g, truncate_level=0.)
+
+                            result_dict[split][estim][ate][model].append(psi)
+
+                    # Postprocess: join ates
+                    result_dict[split][estim]['baseline'] = list(zip(result_dict[split]['b2bd']['ate1_0']['baseline'],
+                                                                     result_dict[split]['b2bd']['ate2_0']['baseline'],
+                                                                     result_dict[split]['b2bd']['ate3_0']['baseline'],
+                                                                     result_dict[split]['b2bd']['ate4_0']['baseline']))
+                    result_dict[split][estim]['targeted_regularization'] = list(
+                        zip(result_dict[split]['b2bd']['ate1_0']['targeted_regularization'],
+                            result_dict[split]['b2bd']['ate2_0']['targeted_regularization'],
+                            result_dict[split]['b2bd']['ate3_0']['targeted_regularization'],
+                            result_dict[split]['b2bd']['ate4_0']['targeted_regularization']))
+
+
+                elif estim == 'T_learn':
+                    base_dat_path = os.path.join(estim_dat_path, 'baseline', ('0_replication_' + split + '.npz'))
+                    q_t0, q_t1, q_t2, q_t3, q_t4, y, t, index = load_data_t(base_dat_path)
+                    # Compute estimator
+                    psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.)
+
+                    result_dict[split][estim]['baseline'].append(psi)
+
+                else:
+                    sys.exit('wrong estimator list')
+
+    # Postprocess: delete individual ates of dragonnet
+    for i in range(1, 5):
+        del result_dict['train']['b2bd']['ate{}_0'.format(i)]
+        del result_dict['test']['b2bd']['ate{}_0'.format(i)]
+
+    # Compute averages
+    for estim in estimator:
+        # Estimator level (0: b2bd, Hydra, T-learn; 1: b2bd, Hydra, T-learn; ...)
+
+        for split in ['train', 'test']:
+            # Split level (0: b2bd: train, test; 0: Hydra: train, test; 0: T-learn: train, test...)
+
+            if estim == 'Hydranet':
+                # True and naive values
+                result_dict[split]['true'] = np.mean(result_dict[split]['true'], axis=0)
+                result_dict[split]['naive']['baseline'] = np.mean(result_dict[split]['naive']['baseline'], axis=0)
+                result_dict[split]['naive']['ae'] = np.sum(
+                    np.abs(result_dict[split]['true'] - result_dict[split]['naive']['baseline']))
+                result_dict[split]['naive']['pe'] = result_dict[split]['naive']['ae'] / np.sum(
+                    result_dict[split]['true']) * 100
+
+                for model in ['baseline', 'targeted_regularization']:
+                    result_dict[split][estim][model] = np.mean(result_dict[split][estim][model], axis=0)
+                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(
+                        np.abs(result_dict[split][estim][model] - result_dict[split]['true']))
+                    result_dict[split][estim]['{}_pe'.format(model)] = result_dict[split][estim][
+                                                                           '{}_ae'.format(model)] / np.sum(
+                        result_dict[split]['true']) * 100
+
+            elif estim == 'b2bd':
+                for model in ['baseline', 'targeted_regularization']:
+                    result_dict[split][estim][model] = np.mean(result_dict[split][estim][model], axis=0)
+                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(
+                        np.abs(result_dict[split][estim][model] - result_dict[split]['true']))
+                    result_dict[split][estim]['{}_pe'.format(model)] = result_dict[split][estim][
+                                                                           '{}_ae'.format(model)] / np.sum(
+                        result_dict[split]['true']) * 100
+
+            elif estim == 'T_learn':
+                result_dict[split][estim]['baseline'] = np.mean(result_dict[split][estim]['baseline'], axis=0)
+                result_dict[split][estim]['baseline_ae'] = np.sum(
+                    np.abs(result_dict[split][estim]['baseline'] - result_dict[split]['true']))
+                result_dict[split][estim]['baseline_pe'] = result_dict[split][estim]['baseline_ae'] / np.sum(
+                    result_dict[split]['true']) * 100
+
+    return result_dict
+
+    '''        
+    # Compute error, from average true and average estimated values
+
+    biased_error = abs(true_val - biased_val).sum(axis=1) #change to sum
+    biased_error_val = biased_error.mean()
+    hydranet_error = abs(estim_dict[model] - true_val).sum(axis=1)
+    hydranet_error_val = hydranet_error.mean()
+
+    # Check big-small error t-reg difference
+    ####################################################
+    if model=='baseline':
+        baseline_low = np.where(hydranet_error<hydranet_error_val)[0]
+        baseline_high = np.where(hydranet_error>hydranet_error_val)[0]
+
+    hydranet_error = hydranet_error[baseline_high]
+    hydranet_error_val = hydranet_error.mean()
+    ####################################################
+
+    # Compute error, from average true and average estimated values
+    result_dict['N'] = n_reps
+    result_dict['Avg true value'] = np.mean(true_val, axis=0)
+    result_dict['Avg biased estimate'] = np.mean(biased_val, axis=0)
+    result_dict['Naive estimator error'] = biased_error_val
+    result_dict[model]['Avg hydranet est.'] = np.mean(estim_dict[model], axis=0)
+    result_dict[model]['Hydranet error'] = hydranet_error_val
+
+    # Compute bootstrap 95% CI intervals for the error
+    alg_name = '{} est error CIs'.format(model)
+    naive_ci_l, naive_ci_u = bootstrap((biased_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
+    hydra_ci_l, hydra_ci_u = bootstrap((hydranet_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
+    result_dict['Naive est error CIs'] = naive_ci_l, naive_ci_u
+    result_dict[alg_name] = hydra_ci_l, hydra_ci_u
+#'''
+
+
+def analyse_results_ihdp(all_res_dict, output_dir):
+    # Print figures and generate tables
+    all_res_df = pd.DataFrame(all_res_dict)
+    df_train = all_res_df['train']
+    df_test = all_res_df['test']
+
+    file = os.path.join(output_dir, 'summary.txt')
+    with open(file, 'w') as sumfile:
+        sumfile.write('In-sample\n')
+        sumfile.write('Naive estimator error: {}\n'.format(df_train['naive']['ae']))
+        sumfile.write('B2BD baseline error: {}\n'.format(df_train['b2bd']['baseline_ae']))
+        sumfile.write('B2BD T-reg error: {}\n'.format(df_train['b2bd']['targeted_regularization_ae']))
+        sumfile.write('T-learner error: {}\n'.format(df_train['T_learn']['baseline_ae']))
+        sumfile.write('Hydranet baseline error: {}\n'.format(df_train['Hydranet']['baseline_ae']))
+        sumfile.write('Hydranet T-reg error: {}\n'.format(df_train['Hydranet']['targeted_regularization_ae']))
+        sumfile.write('*******\n')
+
+        sumfile.write('Out-sample\n')
+        sumfile.write('Naive estimator error: {}\n'.format(df_test['naive']['ae']))
+        sumfile.write('B2BD baseline error: {}\n'.format(df_test['b2bd']['baseline_ae']))
+        sumfile.write('B2BD T-reg error: {}\n'.format(df_test['b2bd']['targeted_regularization_ae']))
+        sumfile.write('T-learner error: {}\n'.format(df_test['T_learn']['baseline_ae']))
+        sumfile.write('Hydranet baseline error: {}\n'.format(df_test['Hydranet']['baseline_ae']))
+        sumfile.write('Hydranet T-reg error: {}\n'.format(df_test['Hydranet']['targeted_regularization_ae']))
+        sumfile.write('*******\n')
+
 def main():
 
     # Parse arguments
     num_treats = 5 # or 10
-    dataset = 'synthetic' # or 'synthetic'
-    main_param = 'data_size' # or data_size or n_confs
+    dataset = 'ihdp' # or 'synthetic'
+    main_param = 'n_confs' # or data_size or n_confs
     device = 'GPU'
     input_dir = '/home/bvelasco/Hydranet/'
     output_dir = '/home/bvelasco/Hydranet/Results/'
@@ -507,10 +805,14 @@ def main():
 
     # System arguments
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Silence tensorflow warnings
-    main_param_dict = {'bias':[2,5,10,30],
+    main_param_dict = {'bias':[5,10,30],
                         'n_confs':[2, 5, 10, 18],
                         'data_size':[1000, 2000, 5000, 10000]
                       }
+    all_res_dict = {'bias': { 5:[], 10:[], 30:[]},
+                       'n_confs': {2:[], 5:[], 10:[], 18:[]},
+                       'data_size': {1000:[], 2000:[], 5000:[], 10000:[]}
+                       }
     tf.compat.v1.disable_eager_execution()
 
     # Set seeds
@@ -569,14 +871,16 @@ def main():
             for val in main_param_dict[main_param]:
                 # Build paths
                 input_dir_ = input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                res = analyse_results(input_dir_,output_dir_)
+                all_res_dict[main_param][val] = collect_results_syn(input_dir_)
+            output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param)
+            analyse_results_syn(all_res_dict, main_param, output_dir_)
 
         elif dataset == 'ihdp':
             # Build paths
             input_dir_ = input_dir + dataset + '/{}_treats/'.format(num_treats)
             output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats)
-            res = analyse_results(input_dir_,output_dir_)
+            res_dict = collect_results_ihdp(input_dir_)
+            analyse_results_ihdp(res_dict, output_dir_)
 
     else:
         print('Do not analyze')
