@@ -5,15 +5,17 @@
 
 import pandas
 import numpy as np
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 import glob as glob
-import os
 import random
 import keras.backend as K
 import matplotlib.pyplot as plt
 import sklearn.linear_model as lm
 import copy
 import argparse
+import keras
 
 from numpy import load
 from joblib import Parallel, delayed # for parallel processing
@@ -31,4 +33,6 @@ from keras.models import Model
 from keras import regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau, TerminateOnNaN
 from lightgbm import LGBMRegressor
+from IPython.display import clear_output
+
 

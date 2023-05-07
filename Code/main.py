@@ -43,6 +43,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
 
     adam_callbacks = [
         TerminateOnNaN(),
+        PlotLearning(),
         EarlyStopping(monitor='val_loss', patience=2, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
                           min_delta=1e-8, cooldown=0, min_lr=0)
@@ -61,6 +62,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     
     sgd_callbacks = [
         TerminateOnNaN(),
+        PlotLearning(),
         EarlyStopping(monitor='val_loss', patience=40, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
                           min_delta=0., cooldown=0, min_lr=0)
@@ -133,7 +135,7 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
 
     adam_callbacks = [
         TerminateOnNaN(),
-        # PlotLearning(),
+        #PlotLearning(),
         EarlyStopping(monitor='val_loss', patience=5, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',min_delta=1e-8, cooldown=0, min_lr=0)]
 
@@ -152,7 +154,7 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
 
     sgd_callbacks = [
         TerminateOnNaN(),
-        # PlotLearning(),
+        #PlotLearning(),
         EarlyStopping(monitor='val_loss', patience=20, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',min_delta=0., cooldown=0, min_lr=0)]
 
@@ -273,7 +275,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
 
         ############# RUN THE DIFFERENT ESTIMATORS ##############
 
-        # T-learner
+        '''# T-learner
         test_outputs_tlearn, train_output_tlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
 
         output_dir_tlearn = os.path.join(simulation_output_dir, "T_learn/baseline")
@@ -283,7 +285,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
         for num, output in enumerate(test_outputs_tlearn):
             np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_test.npz".format(num)), **output)
         for num, output in enumerate(train_output_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)
+            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)'''
 
         # Hydranet baseline and Hydranet T-reg
         for is_targeted_regularization in [False, True]:
@@ -303,7 +305,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                 np.savez_compressed(os.path.join(output_dir_hy, "{}_replication_train.npz".format(num)),**output)
 
 
-        # Back to back Dragonnets
+        '''# Back to back Dragonnets
         n_binary_estim = ['ate1_0', 'ate2_0', 'ate3_0', 'ate4_0']
         for estimator in n_binary_estim:
             x_d = pandas.concat([x, pandas.Series(t.flatten(), name='t')], axis=1)
@@ -356,7 +358,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                 for num, output in enumerate(test_outputs_b2bd):
                     np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_test.npz".format(num)), **output)
                 for num, output in enumerate(train_output_b2bd):
-                    np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)
+                    np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)'''
 
                 
 def collect_results_syn(input_dir):
@@ -495,39 +497,6 @@ def collect_results_syn(input_dir):
 
     return result_dict
 
-    '''        
-    # Compute error, from average true and average estimated values
-    
-    biased_error = abs(true_val - biased_val).sum(axis=1) #change to sum
-    biased_error_val = biased_error.mean()
-    hydranet_error = abs(estim_dict[model] - true_val).sum(axis=1)
-    hydranet_error_val = hydranet_error.mean()
-    
-    # Check big-small error t-reg difference
-    ####################################################
-    if model=='baseline':
-        baseline_low = np.where(hydranet_error<hydranet_error_val)[0]
-        baseline_high = np.where(hydranet_error>hydranet_error_val)[0]
-    
-    hydranet_error = hydranet_error[baseline_high]
-    hydranet_error_val = hydranet_error.mean()
-    ####################################################
-    
-    # Compute error, from average true and average estimated values
-    result_dict['N'] = n_reps
-    result_dict['Avg true value'] = np.mean(true_val, axis=0)
-    result_dict['Avg biased estimate'] = np.mean(biased_val, axis=0)
-    result_dict['Naive estimator error'] = biased_error_val
-    result_dict[model]['Avg hydranet est.'] = np.mean(estim_dict[model], axis=0)
-    result_dict[model]['Hydranet error'] = hydranet_error_val
-    
-    # Compute bootstrap 95% CI intervals for the error
-    alg_name = '{} est error CIs'.format(model)
-    naive_ci_l, naive_ci_u = bootstrap((biased_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
-    hydra_ci_l, hydra_ci_u = bootstrap((hydranet_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
-    result_dict['Naive est error CIs'] = naive_ci_l, naive_ci_u
-    result_dict[alg_name] = hydra_ci_l, hydra_ci_u
-#'''
 
 
 def analyse_results_syn(all_res_dict, main_param, output_dir):
@@ -726,39 +695,6 @@ def collect_results_ihdp(input_dir):
 
     return result_dict
 
-    '''        
-    # Compute error, from average true and average estimated values
-
-    biased_error = abs(true_val - biased_val).sum(axis=1) #change to sum
-    biased_error_val = biased_error.mean()
-    hydranet_error = abs(estim_dict[model] - true_val).sum(axis=1)
-    hydranet_error_val = hydranet_error.mean()
-
-    # Check big-small error t-reg difference
-    ####################################################
-    if model=='baseline':
-        baseline_low = np.where(hydranet_error<hydranet_error_val)[0]
-        baseline_high = np.where(hydranet_error>hydranet_error_val)[0]
-
-    hydranet_error = hydranet_error[baseline_high]
-    hydranet_error_val = hydranet_error.mean()
-    ####################################################
-
-    # Compute error, from average true and average estimated values
-    result_dict['N'] = n_reps
-    result_dict['Avg true value'] = np.mean(true_val, axis=0)
-    result_dict['Avg biased estimate'] = np.mean(biased_val, axis=0)
-    result_dict['Naive estimator error'] = biased_error_val
-    result_dict[model]['Avg hydranet est.'] = np.mean(estim_dict[model], axis=0)
-    result_dict[model]['Hydranet error'] = hydranet_error_val
-
-    # Compute bootstrap 95% CI intervals for the error
-    alg_name = '{} est error CIs'.format(model)
-    naive_ci_l, naive_ci_u = bootstrap((biased_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
-    hydra_ci_l, hydra_ci_u = bootstrap((hydranet_error,), statistic=np.mean, method='basic', random_state = 3).confidence_interval
-    result_dict['Naive est error CIs'] = naive_ci_l, naive_ci_u
-    result_dict[alg_name] = hydra_ci_l, hydra_ci_u
-#'''
 
 
 def analyse_results_ihdp(all_res_dict, output_dir):
@@ -767,6 +703,7 @@ def analyse_results_ihdp(all_res_dict, output_dir):
     df_train = all_res_df['train']
     df_test = all_res_df['test']
 
+    os.makedirs(os.path.join(output_dir), exist_ok=True)
     file = os.path.join(output_dir, 'summary.txt')
     with open(file, 'w') as sumfile:
         sumfile.write('In-sample\n')
@@ -858,20 +795,20 @@ def main():
                 print('Device is set to "GPU" but no GPU was found')
                 sys.exit()
 
-        input_dir = os.path.join(input_dir, 'Input_data/')
-        output_dir = os.path.join(output_dir, 'Results_NN/')
+        input_dir_ = os.path.join(input_dir, 'Input_data/')
+        output_dir_ = os.path.join(output_dir, 'Results_NN/')
 
         with tf.device(device):
             if dataset=='synthetic':
                 for val in main_param_dict[main_param]:
                     # Build paths
-                    input_dir_ = input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                    output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                    input_dir_ = input_dir_ + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                    output_dir_ = output_dir_ + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
                     run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size)
             elif dataset=='ihdp':
                 # Build paths
-                input_dir_ = input_dir + dataset + '/{}_treats/'.format(num_treats)
-                output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats)
+                input_dir_ = input_dir_ + dataset + '/{}_treats/'.format(num_treats)
+                output_dir_ = output_dir_ + dataset + '/{}_treats/'.format(num_treats)
                 run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size)
     else:
         print('Do not train')
