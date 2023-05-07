@@ -75,7 +75,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     
 
     # Plot metrics to monitor the training process
-    plt.figure()
+    '''plt.figure()
     plt.plot(hydranet.history.history['loss'])
     plt.plot(hydranet.history.history['val_loss'])
     plt.legend(["Train", "Test"])
@@ -133,7 +133,7 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
     yt_train = np.concatenate([y_train, t_train], 1)
 
     # With Adam
-    opt = Adam(lr=1e-3)
+    opt = Adam(learning_rate=1e-3)
 
     dragonnet.compile(
         optimizer=opt,
@@ -154,7 +154,7 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
     # with SGD
     sgd_lr = 1e-5
     momentum = 0.9
-    opt = SGD(lr=sgd_lr, momentum=momentum, nesterov=True)
+    opt = SGD(learning_rate=sgd_lr, momentum=momentum, nesterov=True)
     dragonnet.compile(optimizer=opt,
         loss=loss, metrics=metrics,
         run_eagerly=False)

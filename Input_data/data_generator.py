@@ -5,7 +5,7 @@ import sys
 
 num_treats = 5 # or 10
 num_covars = 30
-num_reps = 4
+num_reps = 20
 dataset = 'synthetic' # or 'synthetic'
 output_parent_dir = '/home/bvelasco/Hydranet/Input_data'
 np.random.seed(1)
