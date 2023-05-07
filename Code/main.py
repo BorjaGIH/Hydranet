@@ -789,20 +789,34 @@ def analyse_results_ihdp(all_res_dict, output_dir):
 
 def main():
 
-    # Parse arguments
-    num_treats = 5 # or 10
-    dataset = 'synthetic' # or 'synthetic'
-    main_param = 'data_size' # or data_size or n_confs
-    device = 'GPU'
-    input_dir = '/home/bvelasco/Hydranet/'
-    output_dir = '/home/bvelasco/Hydranet/Results/'
-    loss = hydranet_loss
-    loss_dr = dragonnet_loss_binarycross_dr
-    val_split = 0.2
-    batch_size = 100
-    Train = False
-    Analyze = True
+    parser = argparse.ArgumentParser()
 
+    parser.add_argument("--num_treats", type=int, default=5)
+    parser.add_argument("--dataset", type=str, default="synthetic", choices=['synthetic', 'ihdp'])
+    parser.add_argument("--input_dir", type=str, default="/home/bvelasco/Hydranet/")
+    parser.add_argument("--output_dir", type=str, default="/home/bvelasco/Hydranet/Results/")
+    parser.add_argument("--main_param", type=str, choices=["data_size", 'n_confs', 'bias'])
+    parser.add_argument("--device", type=str, default='GPU', choices=["GPU", "CPU"])
+    parser.add_argument('--loss', type=eval, default=hydranet_loss)
+    parser.add_argument('--loss_dr', type=eval, default=dragonnet_loss_binarycross_dr)
+    parser.add_argument("--val_split", type=float, default=0.2)
+    parser.add_argument("--batch_size", type=int, default=100)
+    parser.add_argument("--Train", type=bool, default=False)
+    parser.add_argument("--Analyze", type=bool, default=False)
+
+    args = parser.parse_args()
+    num_treats = args.num_treats  # or 10
+    dataset = args.dataset  # or 'synthetic'
+    main_param = args.main_param  # or data_size or n_confs
+    device = args.device
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    loss = args.loss
+    loss_dr = args.loss_dr
+    val_split = args.val_split
+    batch_size = args.batch_size
+    Train = args.Train
+    Analyze = args.Analyze
 
     # System arguments
     
