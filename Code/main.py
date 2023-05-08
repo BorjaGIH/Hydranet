@@ -516,6 +516,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir):
     df_test.columns = df_test.columns.droplevel(1)
     df_train = df_train.T
     df_test = df_test.T
+    os.makedirs(os.path.join(output_dir, main_param), exist_ok=True)
 
     fig, ax = plt.subplots()
 
@@ -529,7 +530,6 @@ def analyse_results_syn(all_res_dict, main_param, output_dir):
                labels=['Naive', 'B2BD Baseline', 'B2BD T-reg', 'T-learner', 'Hydranet Baseline', 'Hydranet T-reg'])
     plt.xlabel('Error')
     plt.ylabel(main_param)
-    os.makedirs(os.path.join(output_dir, main_param), exist_ok=True)
     fig.savefig(os.path.join(output_dir, main_param + '_in-sample'))
     #plt.show()
 
@@ -547,6 +547,40 @@ def analyse_results_syn(all_res_dict, main_param, output_dir):
     plt.ylabel(main_param)
     fig.savefig(os.path.join(output_dir, main_param + '_out-sample'))
     #plt.show()
+
+    # Print figures and generate tables
+
+    file = os.path.join(output_dir, 'summary.txt')
+    with open(file, 'w') as sumfile:
+        sumfile.write('In-sample\n')
+        sumfile.write('Naive estimator error:\n')
+        sumfile.write('{}\n'.format(df_train['naive'].apply(lambda x: x['baseline_ae']).to_string()))
+        sumfile.write('B2BD baseline error:\n')
+        sumfile.write('{}\n'.format(df_train['b2bd'].apply(lambda x: x['baseline_ae']).to_string()))
+        sumfile.write('B2BD T-reg error:\n')
+        sumfile.write('{}\n'.format(df_train['b2bd'].apply(lambda x: x['targeted_regularization_ae']).to_string()))
+        sumfile.write('T-learner estimator error:\n')
+        sumfile.write('{}\n'.format(df_train['T_learn'].apply(lambda x: x['baseline_ae']).to_string()))
+        sumfile.write('Hydranet baseline error:\n')
+        sumfile.write('{}\n'.format(df_train['Hydranet'].apply(lambda x: x['baseline_ae']).to_string()))
+        sumfile.write('Hydranet  T-reg error:\n')
+        sumfile.write('{}\n'.format(df_train['Hydranet'].apply(lambda x: x['targeted_regularization_ae']).to_string()))
+        sumfile.write('*******\n')
+
+        sumfile.write('Out-sample\n')
+        sumfile.write('Naive estimator error:\n')
+        sumfile.write('{}\n'.format(df_test['naive'].apply(lambda x: x['baseline_ae']).to_string()))
+        sumfile.write('B2BD baseline error:\n')
+        sumfile.write('{}\n'.format(df_test['b2bd'].apply(lambda x: x['baseline_ae']).to_string()))
+        sumfile.write('B2BD T-reg error:\n')
+        sumfile.write('{}\n'.format(df_test['b2bd'].apply(lambda x: x['targeted_regularization_ae']).to_string()))
+        sumfile.write('T-learner estimator error:\n')
+        sumfile.write('{}\n'.format(df_test['T_learn'].apply(lambda x: x['baseline_ae']).to_string()))
+        sumfile.write('Hydranet baseline error:\n')
+        sumfile.write('{}\n'.format(df_test['Hydranet'].apply(lambda x: x['baseline_ae']).to_string()))
+        sumfile.write('Hydranet  T-reg error:\n')
+        sumfile.write('{}\n'.format(df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae']).to_string()))
+        sumfile.write('*******\n')
 
 
 def collect_results_ihdp(input_dir):
@@ -781,6 +815,7 @@ def main():
     # Train
     if Train:
         print('Train')
+        
         # Configure GPU resources if training in GPU
         if device == 'CPU':
             print('Training in CPU')
@@ -802,20 +837,20 @@ def main():
                 print('Device is set to "GPU" but no GPU was found')
                 sys.exit()
 
-        input_dir_ = os.path.join(input_dir, 'Input_data/')
-        output_dir_ = os.path.join(output_dir, 'Results_NN/')
+        base_input_dir = os.path.join(input_dir, 'Input_data/')
+        base_output_dir = os.path.join(output_dir, 'Results_NN/')
 
         with tf.device(device):
             if dataset=='synthetic':
                 for val in main_param_dict[main_param]:
                     # Build paths
-                    input_dir_ = input_dir_ + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                    output_dir_ = output_dir_ + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                    input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                    output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
                     run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size)
             elif dataset=='ihdp':
                 # Build paths
-                input_dir_ = input_dir_ + dataset + '/{}_treats/'.format(num_treats)
-                output_dir_ = output_dir_ + dataset + '/{}_treats/'.format(num_treats)
+                input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats)
+                output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats)
                 run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size)
     else:
         print('Do not train')
@@ -823,21 +858,22 @@ def main():
     # Analyze
     if Analyze:
         print('Analyze')
-        input_dir = os.path.join(input_dir, 'Results/Results_NN/')
-        output_dir = os.path.join(output_dir, 'Results_CI/')
+        
+        base_input_dir = os.path.join(input_dir, 'Results/Results_NN/')
+        base_output_dir = os.path.join(output_dir, 'Results_CI/')
 
         if dataset == 'synthetic':
             for val in main_param_dict[main_param]:
                 # Build paths
-                input_dir_ = input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
                 all_res_dict[main_param][val] = collect_results_syn(input_dir_)
-            output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param)
+            output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param)
             analyse_results_syn(all_res_dict, main_param, output_dir_)
 
         elif dataset == 'ihdp':
             # Build paths
-            input_dir_ = input_dir + dataset + '/{}_treats/'.format(num_treats)
-            output_dir_ = output_dir + dataset + '/{}_treats/'.format(num_treats)
+            input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats)
+            output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats)
             res_dict = collect_results_ihdp(input_dir_)
             analyse_results_ihdp(res_dict, output_dir_)
 
