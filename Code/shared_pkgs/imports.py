@@ -25,7 +25,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from joblib import Parallel, delayed # for parallel processing
 from keras.metrics import binary_accuracy, categorical_accuracy
-from keras.optimizer_v1 import rmsprop as RMSprop, sgd as SGD, Adam
+#from keras.optimizer_v1 import rmsprop as RMSprop, sgd as SGD, Adam
+from tensorflow.keras.optimizers import Adam, SGD
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau, TerminateOnNaN
 from tensorflow.compat.v1.keras.utils import to_categorical
 from keras.layers import Layer, Input, Dense, Concatenate, BatchNormalization, Dropout, Softmax

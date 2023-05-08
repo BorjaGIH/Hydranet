@@ -23,7 +23,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     metrics = [hydranet_loss, regression_loss, categorical_classification_loss, treatment_accuracy, track_epsilon]
 
     if targeted_regularization:
-        loss = make_tarreg_loss(ratio=5, hydranet_loss=loss)
+        loss = make_tarreg_loss(ratio=4, hydranet_loss_=loss)
     else:
         loss = loss
 
@@ -38,12 +38,12 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
 
     # With Adam
     hydranet.compile(
-        optimizer=Adam(lr=1e-3),
+        optimizer=Adam(learning_rate=1e-3),
         loss=loss, metrics=metrics, run_eagerly=False)
 
     adam_callbacks = [
         TerminateOnNaN(),
-        PlotLearning(),
+        #PlotLearning(),
         EarlyStopping(monitor='val_loss', patience=2, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
                           min_delta=1e-8, cooldown=0, min_lr=0)
@@ -57,12 +57,12 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     # with SGD
     sgd_lr = 1e-5
     momentum = 0.9
-    hydranet.compile(optimizer=SGD(lr=sgd_lr, momentum=momentum, nesterov=True),
+    hydranet.compile(optimizer=SGD(learning_rate=sgd_lr, momentum=momentum, nesterov=True),
                       loss=loss, metrics=metrics, run_eagerly=False)
     
     sgd_callbacks = [
         TerminateOnNaN(),
-        PlotLearning(),
+        #PlotLearning(),
         EarlyStopping(monitor='val_loss', patience=40, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
                           min_delta=0., cooldown=0, min_lr=0)
@@ -75,18 +75,25 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     
 
     # Plot metrics to monitor the training process
-    '''plt.figure()
+    plt.figure()
     plt.plot(hydranet.history.history['loss'])
     plt.plot(hydranet.history.history['val_loss'])
     plt.legend(["Train", "Test"])
-    plt.title("Loss")
+    plt.title("Hydranet Loss")
     plt.show() # Training and validation losses
+
+    plt.figure()
+    plt.plot(hydranet.history.history['treatment_accuracy'])
+    plt.plot(hydranet.history.history['val_treatment_accuracy'])
+    plt.legend(["Train", "Test"])
+    plt.title("Hydranet Treatment prediction accuracy")
+    plt.show()  # Treatment prediction accuracy
     
     plt.figure()
     plt.plot(hydranet.history.history['track_epsilon'])
     plt.plot(hydranet.history.history['val_track_epsilon'])
     plt.legend(["Train", "Test"])
-    plt.title("Epsilon value (Regularization term)")
+    plt.title("Epsilon (T-reg = {})".format(targeted_regularization))
     plt.show() # Epsilon'''
 
     yt_hat_test = hydranet.predict(x_test)
@@ -169,21 +176,21 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
     plt.plot(dragonnet.history.history['loss'])
     plt.plot(dragonnet.history.history['val_loss'])
     plt.legend(["Train", "Test"])
-    plt.title("Loss")
+    plt.title("B2BD Loss")
     plt.show() # Training and validation losses
 
     plt.figure()
-    plt.plot(dragonnet.history.history['treatment_accuracy'])
-    plt.plot(dragonnet.history.history['val_treatment_accuracy'])
+    plt.plot(dragonnet.history.history['treatment_accuracy_dr'])
+    plt.plot(dragonnet.history.history['val_treatment_accuracy_dr'])
     plt.legend(["Train", "Test"])
-    plt.title("Treatment prediction accuracy")
+    plt.title("B2BD Treatment prediction accuracy")
     plt.show() # Treatment prediction accuracy
 
     plt.figure()
-    plt.plot(dragonnet.history.history['track_epsilon'])
-    plt.plot(dragonnet.history.history['val_track_epsilon'])
+    plt.plot(dragonnet.history.history['track_epsilon_dr'])
+    plt.plot(dragonnet.history.history['val_track_epsilon_dr'])
     plt.legend(["Train", "Test"])
-    plt.title("Epsilon value (Regularization term)")
+    plt.title("B2BD Epsilon value (Regularization term)")
     plt.show() # Epsilon'''
 
     yt_hat_test = dragonnet.predict(x_test)
@@ -275,7 +282,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
 
         ############# RUN THE DIFFERENT ESTIMATORS ##############
 
-        '''# T-learner
+        # T-learner
         test_outputs_tlearn, train_output_tlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
 
         output_dir_tlearn = os.path.join(simulation_output_dir, "T_learn/baseline")
@@ -285,7 +292,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
         for num, output in enumerate(test_outputs_tlearn):
             np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_test.npz".format(num)), **output)
         for num, output in enumerate(train_output_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)'''
+            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)
 
         # Hydranet baseline and Hydranet T-reg
         for is_targeted_regularization in [False, True]:
@@ -305,7 +312,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                 np.savez_compressed(os.path.join(output_dir_hy, "{}_replication_train.npz".format(num)),**output)
 
 
-        '''# Back to back Dragonnets
+        # Back to back Dragonnets
         n_binary_estim = ['ate1_0', 'ate2_0', 'ate3_0', 'ate4_0']
         for estimator in n_binary_estim:
             x_d = pandas.concat([x, pandas.Series(t.flatten(), name='t')], axis=1)
@@ -358,7 +365,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                 for num, output in enumerate(test_outputs_b2bd):
                     np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_test.npz".format(num)), **output)
                 for num, output in enumerate(train_output_b2bd):
-                    np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)'''
+                    np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)
 
                 
 def collect_results_syn(input_dir):
@@ -696,7 +703,6 @@ def collect_results_ihdp(input_dir):
     return result_dict
 
 
-
 def analyse_results_ihdp(all_res_dict, output_dir):
     # Print figures and generate tables
     all_res_df = pd.DataFrame(all_res_dict)
@@ -738,8 +744,8 @@ def main():
     parser.add_argument('--loss_dr', type=eval, default=dragonnet_loss_binarycross_dr)
     parser.add_argument("--val_split", type=float, default=0.2)
     parser.add_argument("--batch_size", type=int, default=100)
-    parser.add_argument("--Train", type=bool, default=False)
-    parser.add_argument("--Analyze", type=bool, default=False)
+    parser.add_argument("--Train", type=eval, default=False, choices= [True, False])
+    parser.add_argument("--Analyze", type=eval, default=False , choices=[True, False])
 
     args = parser.parse_args()
     num_treats = args.num_treats  # or 10
@@ -765,11 +771,12 @@ def main():
                        'n_confs': {2:[], 5:[], 10:[], 18:[]},
                        'data_size': {1000:[], 2000:[], 5000:[], 10000:[]}
                        }
-    tf.compat.v1.disable_eager_execution()
+    tf.compat.v1.enable_eager_execution()
 
     # Set seeds
     random.seed(1)
     np.random.seed(1)
+    print(args.Train)
 
     # Train
     if Train:

@@ -11,8 +11,8 @@ class EpsilonLayer(Layer):
         # Create a trainable weight variable for this layer.
         self.epsilon = self.add_weight(name='epsilon',
                                        shape=[1, 4],
-                                       initializer='RandomNormal',
-                                       #  initializer='ones',
+                                       #initializer='RandomNormal',
+                                       initializer='zeros',
                                        trainable=True)
         super(EpsilonLayer, self).build(input_shape)  # Be sure to call this at the end
 

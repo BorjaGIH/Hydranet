@@ -23,13 +23,11 @@ def regression_loss(concat_true, concat_pred):
 def categorical_classification_loss(concat_true, concat_pred):
     t_true = concat_true[:, 1]
     t_pred = concat_pred[:, 5:10]
-    t_pred = (t_pred + 0.001) / 1.001
 
     temp = tf.one_hot(tf.cast(t_true, tf.int32), 5)
     temp = tf.cast(temp, tf.float32)
 
-    temp1 = tf.convert_to_tensor(temp)
-    temp2 = K.categorical_crossentropy(temp1, t_pred)
+    temp2 = K.categorical_crossentropy(temp, t_pred)
     losst = tf.reduce_sum(temp2)
 
     return losst
@@ -54,9 +52,10 @@ def track_epsilon(concat_true, concat_pred): # For training monitoring purposes
     return tf.abs(tf.reduce_mean(epsilons))
 
 
-def make_tarreg_loss(ratio=1., hydranet_loss=hydranet_loss): # Targeted regularization loss
+def make_tarreg_loss(ratio=1., hydranet_loss_=hydranet_loss): # Targeted regularization loss
+    #print(hydranet_loss_)
     def tarreg_ATE_unbounded_domain_loss(concat_true, concat_pred):
-        vanilla_loss = hydranet_loss(concat_true, concat_pred)
+        vanilla_loss = hydranet_loss_(concat_true, concat_pred)
 
         y_true = concat_true[:, 0]
         t_true = concat_true[:, 1]
@@ -68,8 +67,8 @@ def make_tarreg_loss(ratio=1., hydranet_loss=hydranet_loss): # Targeted regulari
         y4_pred = concat_pred[:, 4]
         t_pred = concat_pred[:, 5:10]
 
-        epsilons = concat_pred[:, 10:15]
-        t_pred = (t_pred + 0.001) / 1.001
+        epsilons = concat_pred[:, 10:14]
+        #t_pred = (t_pred + 0.001) / 1.001
         # t_pred = tf.clip_by_value(t_pred,0.01, 0.99,name='t_pred')
 
         # 5-fold
@@ -109,7 +108,6 @@ def regression_loss_dr(concat_true, concat_pred):
 def binary_classification_loss(concat_true, concat_pred):
     t_true = concat_true[:, 1]
     t_pred = concat_pred[:, 2]
-    #t_pred = tf.constant(np.random.random(t_pred.shape), dtype=float, shape=t_pred.shape)
     #t_pred = (t_pred + np.eps) / 1.001
     losst = tf.reduce_sum(K.binary_crossentropy(t_true, t_pred))
 

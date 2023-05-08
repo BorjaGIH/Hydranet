@@ -64,7 +64,7 @@ def psi_aiptw(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, truncate_level=0.05):
     return [np.mean(ite1_0), np.mean(ite2_0), np.mean(ite3_0), np.mean(ite4_0)]
 
 
-def psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.05):
+def psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.):
     ite1_0 = (q_t1 - q_t0)
     ite2_0 = (q_t2 - q_t0)
     ite3_0 = (q_t3 - q_t0)
