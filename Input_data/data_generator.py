@@ -59,7 +59,7 @@ def analyse_generated_data(temp_all, path):
 
         ### Individual and total bias
 
-        sumfile.write('Bias 1_0: {}\n'.format(abs((temp_all['y_1'].mean() - temp_all['y_0'].mean()) - (
+        '''sumfile.write('Bias 1_0: {}\n'.format(abs((temp_all['y_1'].mean() - temp_all['y_0'].mean()) - (
                 temp_all.y[temp_all.z == 1].mean() - temp_all.y[temp_all.z == 0].mean()))))
         sumfile.write('Bias 2_0: {}\n'.format(abs((temp_all['y_2'].mean() - temp_all['y_0'].mean()) - (
                 temp_all.y[temp_all.z == 2].mean() - temp_all.y[temp_all.z == 0].mean()))))
@@ -76,13 +76,27 @@ def analyse_generated_data(temp_all, path):
                 temp_all.y_3 - temp_all.y_0).mean()) / abs(temp_all.y_3 - temp_all.y_0).mean() * 100
         b4 = abs((temp_all.y[temp_all.z == 4].mean() - temp_all.y[temp_all.z == 0].mean()) - (
                 temp_all.y_4 - temp_all.y_0).mean()) / abs(temp_all.y_4 - temp_all.y_0).mean() * 100
+        sumfile.write('*******\n')'''
+        
+        sumfile.write('Bias 0: {}\n'.format(abs((temp_all['y_0'].mean()) - (temp_all.y[temp_all.z == 0].mean()))))
+        sumfile.write('Bias 0: {}\n'.format(abs((temp_all['y_1'].mean()) - (temp_all.y[temp_all.z == 1].mean()))))
+        sumfile.write('Bias 2: {}\n'.format(abs((temp_all['y_2'].mean()) - (temp_all.y[temp_all.z == 2].mean()))))
+        sumfile.write('Bias 3: {}\n'.format(abs((temp_all['y_3'].mean()) - (temp_all.y[temp_all.z == 3].mean()))))
+        sumfile.write('Bias 4: {}\n'.format(abs((temp_all['y_4'].mean()) - (temp_all.y[temp_all.z == 4].mean()))))
+
+        b0 = abs((temp_all.y[temp_all.z == 0].mean()) - (temp_all.y_0).mean()) / abs(temp_all.y_0).mean() * 100
+        b1 = abs((temp_all.y[temp_all.z == 1].mean()) - (temp_all.y_1).mean()) / abs(temp_all.y_1).mean() * 100
+        b2 = abs((temp_all.y[temp_all.z == 2].mean()) - (temp_all.y_2).mean()) / abs(temp_all.y_2).mean() * 100
+        b3 = abs((temp_all.y[temp_all.z == 3].mean()) - (temp_all.y_3).mean()) / abs(temp_all.y_3).mean() * 100
+        b4 = abs((temp_all.y[temp_all.z == 4].mean()) - (temp_all.y_4).mean()) / abs(temp_all.y_4).mean() * 100
         sumfile.write('*******\n')
 
-        sumfile.write('Bias 0 perc: {}\n'.format(b1))
-        sumfile.write('Bias 1 perc: {}\n'.format(b2))
-        sumfile.write('Bias 2 perc: {}\n'.format(b3))
+        sumfile.write('Bias 0 perc: {}\n'.format(b0))
+        sumfile.write('Bias 1 perc: {}\n'.format(b1))
+        sumfile.write('Bias 2 perc: {}\n'.format(b2))
+        sumfile.write('Bias 3 perc: {}\n'.format(b3))
         sumfile.write('Bias 3 perc: {}\n'.format(b4))
-        sumfile.write('total: {}\n'.format(b1 + b2 + b3 + b4))
+        sumfile.write('total: {}\n'.format(b0 + b1 + b2 + b3 + b4))
         sumfile.write('*******\n')
 
     ### Individual histograms
@@ -233,7 +247,7 @@ elif dataset=='synthetic':
                 sigma=1
 
                 ############################### Option 1 my option
-                '''# Covariates
+                # Covariates
                 X = np.random.rand(data_size, num_covars)
                 X = pd.DataFrame(X, columns=['x{}'.format(i) for i in range(num_covars)])
 
@@ -245,22 +259,33 @@ elif dataset=='synthetic':
                 z = np.random.randint(low=0, high=num_treats, size=(data_size,1))
                 z_f = treatment_assignment_op(z, num_treats)
 
-                # Output
-                beta = 0.01*np.ones(num_covars+1)
-                beta2 = 0.05*np.random.randn(n_confs)
+                '''# Output
                 # Version 0
+                beta = 0.01*np.ones(num_covars)
+                beta2 = 0.05*np.random.randn(n_confs+1)
                 f = lambda x,t: np.matmul(np.c_[x], beta) + bias*np.matmul(np.c_[x[:,0:n_confs],t**2],beta2)**3 + bias*np.matmul(np.c_[x[:,0:n_confs],t],beta2)
-                # Other trials
+                
+                # Version 1
+                beta = 0.01*np.ones(num_covars)
+                beta2 = 0.05*np.random.randn(n_confs+1)
                 f = lambda x, tt: np.sqrt(np.abs(np.matmul(x, beta) + bias*np.matmul(np.c_[x[:,0:n_confs],tt**4], beta2))) # + 2*tt**2
+                
+                # Version 2
+                beta = 0.01*np.ones(num_covars)
+                beta2 = 0.05*np.random.randn(n_confs+1)
                 f = lambda x,t: np.matmul(np.c_[x], beta) + bias*np.matmul(np.c_[x[:,0:n_confs],t**2],beta2)**3 + bias*np.matmul(np.c_[x[:,0:n_confs],t],beta2)
-                f = lambda x,t: np.abs(np.matmul(np.c_[x,t**2], beta)) + np.sqrt(np.abs(bias*np.matmul(sum(x[:,0:n_confs]), beta2)**2)))
+                
+                # Version 3
+                beta = 0.001*np.ones(num_covars+1)
+                beta2 = 0.005*np.random.randn(n_confs)
+                f = lambda x,t: np.abs(np.matmul(np.c_[x,t**2], beta)) + np.abs(bias*np.matmul(sum(x[:,0:n_confs]), beta2)**2)
                 
                 # True effect
                 mu_0 = f(X.to_numpy(), 0 * np.ones(X.shape[0])).reshape(-1,1)
                 mu_1 = f(X.to_numpy(), 1 * np.ones(X.shape[0])).reshape(-1,1)
                 mu_2 = f(X.to_numpy(), 2 * np.ones(X.shape[0])).reshape(-1,1)
                 mu_3 = f(X.to_numpy(), 3 * np.ones(X.shape[0])).reshape(-1,1)
-                mu_4 = f(X.to_numpy(), 4 * np.ones(X.shape[0])).reshape(-1,1)
+                mu_4 = f(X.to_numpy(), 4 * np.ones(X.shape[0])).reshape(-1,1)'''
                 ###############################'''
 
                 ############################### Option 2 paper option
@@ -285,15 +310,17 @@ elif dataset=='synthetic':
                 vv = uv / np.linalg.norm(uv)
                 ut = np.random.uniform(size=(1, num_covars))
                 vt = ut / np.linalg.norm(ut)
-                f = lambda x: 100*np.matmul(v0,x.T) + 0.2*np.matmul(vv,x.T) + np.matmul(vt,x.T)
+                f0 = lambda x: 50*(1*np.matmul(v0,x.T) + 0.2*np.matmul(vv,x.T) + np.matmul(vt,x.T))
+                f1 = lambda x: 20*(2*np.matmul(v0,x.T) + 2*np.matmul(vv,x.T) + 5*bias*np.matmul(vt,x.T))
+                f2 = lambda x: 10*(np.matmul(v0,x.T) + 1*np.matmul(vv,x.T) + 3*np.matmul(vt,x.T))
 
                 # True effect
-                mu_0 = f(X.to_numpy()).reshape(-1, 1)
-                mu_1 = f(X.to_numpy()).reshape(-1, 1)
-                mu_2 = f(X.to_numpy()).reshape(-1, 1)
-                mu_3 = f(X.to_numpy()).reshape(-1, 1)
-                mu_4 = f(X.to_numpy()).reshape(-1, 1)
-                ###############################
+                mu_0 = f0(X.to_numpy()).reshape(-1, 1)
+                mu_1 = f1(X.to_numpy()).reshape(-1, 1)
+                mu_2 = f2(X.to_numpy()).reshape(-1, 1)
+                mu_3 = f1(X.to_numpy()).reshape(-1, 1)
+                mu_4 = f0(X.to_numpy()).reshape(-1, 1)
+                ###############################'''
 
 
                 # Sample from normal distribution
