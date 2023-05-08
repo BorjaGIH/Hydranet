@@ -507,7 +507,7 @@ def collect_results_syn(input_dir):
 
 
 def analyse_results_syn(all_res_dict, main_param, output_dir):
-    # Print figures and generate tables
+    # Print figures
     reform = {(outerKey, innerKey): values for outerKey, innerDict in all_res_dict[main_param].items() for innerKey, values in innerDict.items()}
     all_res_df = pd.DataFrame(reform)
     df_train = all_res_df.iloc[:,all_res_df.columns.get_level_values(1)=='train']
@@ -548,11 +548,14 @@ def analyse_results_syn(all_res_dict, main_param, output_dir):
     fig.savefig(os.path.join(output_dir, main_param + '_out-sample'))
     #plt.show()
 
-    # Print figures and generate tables
+    # Generate tables
+    #df_train = df_train.T
+    #df_test = df_test.T
+    #print(df_train['naive']['baseline'])
 
     file = os.path.join(output_dir, 'summary.txt')
     with open(file, 'w') as sumfile:
-        sumfile.write('In-sample\n')
+        '''sumfile.write('In-sample\n')
         sumfile.write('Naive estimator error:\n')
         sumfile.write('{}\n'.format(df_train['naive'].apply(lambda x: x['baseline_ae']).to_string()))
         sumfile.write('B2BD baseline error:\n')
@@ -580,7 +583,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir):
         sumfile.write('{}\n'.format(df_test['Hydranet'].apply(lambda x: x['baseline_ae']).to_string()))
         sumfile.write('Hydranet  T-reg error:\n')
         sumfile.write('{}\n'.format(df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae']).to_string()))
-        sumfile.write('*******\n')
+        sumfile.write('*******\n')'''
 
 
 def collect_results_ihdp(input_dir):
