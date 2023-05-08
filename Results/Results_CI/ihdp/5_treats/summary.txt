@@ -1,0 +1,16 @@
+In-sample
+Naive estimator error: 12.129381519573347
+B2BD baseline error: 19.255196957568852
+B2BD T-reg error: 19.131166665534703
+T-learner error: 10.834429171499975
+Hydranet baseline error: 0.47598072825451965
+Hydranet T-reg error: 0.6732358628370392
+*******
+Out-sample
+Naive estimator error: 10.60834151514835
+B2BD baseline error: 18.45224723550872
+B2BD T-reg error: 18.48295852872924
+T-learner error: 10.607334513382083
+Hydranet baseline error: 0.5755309163386064
+Hydranet T-reg error: 0.6690458356196123
+*******
