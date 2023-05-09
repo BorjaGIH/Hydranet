@@ -1,16 +1,16 @@
 In-sample
-Naive estimator error: 12.129381519573347
-B2BD baseline error: 19.255196957568852
-B2BD T-reg error: 19.131166665534703
-T-learner error: 10.834429171499975
-Hydranet baseline error: 0.47598072825451965
-Hydranet T-reg error: 0.6732358628370392
+Naive estimator error: 13.687799869554258
+B2BD baseline error: 20.326514882931676
+B2BD T-reg error: 20.16619711701032
+T-learner error: 12.377753791035905
+Hydranet baseline error: 1.2121462384611008
+Hydranet T-reg error: 1.5383956358019728
 *******
 Out-sample
-Naive estimator error: 10.60834151514835
-B2BD baseline error: 18.45224723550872
-B2BD T-reg error: 18.48295852872924
-T-learner error: 10.607334513382083
-Hydranet baseline error: 0.5755309163386064
-Hydranet T-reg error: 0.6690458356196123
+Naive estimator error: 14.115834032947498
+B2BD baseline error: 20.014908534421163
+B2BD T-reg error: 20.00486649017103
+T-learner error: 12.36042235256864
+Hydranet baseline error: 1.2777766709779805
+Hydranet T-reg error: 1.4933899699968287
 *******

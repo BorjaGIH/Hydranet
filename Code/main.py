@@ -492,10 +492,10 @@ def collect_results_syn(input_dir, dr_flag):
 
                 result_dict[split]['true'] = np.mean(true_vec, axis=0)
                 result_dict[split]['naive']['baseline'] = np.mean(naive_vec, axis=0)
-                result_dict[split]['naive']['ae'] = np.sum(np.abs(true_vec - naive_vec), axis=1).mean()
-                result_dict[split]['naive']['pe'] = np.sum(np.abs(true_vec - naive_vec))/np.sum(np.abs(true_vec)) *100
-                result_dict[split]['naive']['ae_ciu'] = naive_ci_u
-                result_dict[split]['naive']['ae_cil'] = naive_ci_l
+                result_dict[split]['naive']['baseline_ae'] = np.sum(np.abs(true_vec - naive_vec), axis=1).mean()
+                result_dict[split]['naive']['baseline_pe'] = np.sum(np.abs(true_vec - naive_vec))/np.sum(np.abs(true_vec)) *100
+                result_dict[split]['naive']['baseline_ae_ciu'] = naive_ci_u
+                result_dict[split]['naive']['baseline_ae_cil'] = naive_ci_l
 
                 for model in ['baseline', 'targeted_regularization']:
                     hydra_vec = np.asarray(result_dict[split][estim][model])
@@ -546,8 +546,8 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     # Figures
     ###### ABSOLUTE ERROR ######
     fig, ax = plt.subplots()
-    line1, = ax.plot(df_train['naive'].apply(lambda x: x['ae']), marker='o')
-    ax.fill_between(df_train['naive'].index, df_train['naive'].apply(lambda x: x['ae_cil']), df_train['naive'].apply(lambda x: x['ae_ciu']), alpha=.5)
+    line1, = ax.plot(df_train['naive'].apply(lambda x: x['baseline_ae']), marker='o')
+    ax.fill_between(df_train['naive'].index, df_train['naive'].apply(lambda x: x['baseline_ae_cil']), df_train['naive'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
     line2, = ax.plot(df_train['b2bd'].apply(lambda x: x['baseline_ae']), marker='o')
     ax.fill_between(df_train['naive'].index,df_train['b2bd'].apply(lambda x: x['baseline_ae_cil']), df_train['b2bd'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
     line3, = ax.plot(df_train['b2bd'].apply(lambda x: x['targeted_regularization_ae']), marker='o')
@@ -559,6 +559,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     line6, = ax.plot(df_train['Hydranet'].apply(lambda x: x['targeted_regularization_ae']), marker='o')
     ax.fill_between(df_train['naive'].index,df_train['Hydranet'].apply(lambda x: x['targeted_regularization_ae_cil']), df_train['Hydranet'].apply(lambda x: x['targeted_regularization_ae_ciu']), alpha=.5)
 
+    # Handles and labels for the plots
     handles = [line1, line2, line3, line4, line5, line6]
     if dr_flag:
         labels = ['Naive', 'B2BD Baseline', 'B2BD T-reg', 'T-learner', 'Hydranet Baseline (DR)', 'Hydranet T-reg']
@@ -571,24 +572,18 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     fig.savefig(os.path.join(output_dir, main_param + '_ae' + '_in-sample'))
 
     fig, ax = plt.subplots()
-    line1, = ax.plot(df_test['naive'].apply(lambda x: x['ae']), marker='o')
-    ax.fill_between(df_test['naive'].index, df_test['naive'].apply(lambda x: x['ae_cil']),
-                    df_test['naive'].apply(lambda x: x['ae_ciu']), alpha=.5)
+    line1, = ax.plot(df_test['naive'].apply(lambda x: x['baseline_ae']), marker='o')
+    ax.fill_between(df_test['naive'].index, df_test['naive'].apply(lambda x: x['baseline_ae_cil']),df_test['naive'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
     line2, = ax.plot(df_test['b2bd'].apply(lambda x: x['baseline_ae']), marker='o')
-    ax.fill_between(df_test['naive'].index, df_test['b2bd'].apply(lambda x: x['baseline_ae_cil']),
-                    df_test['b2bd'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
+    ax.fill_between(df_test['naive'].index, df_test['b2bd'].apply(lambda x: x['baseline_ae_cil']),df_test['b2bd'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
     line3, = ax.plot(df_test['b2bd'].apply(lambda x: x['targeted_regularization_ae']), marker='o')
-    ax.fill_between(df_test['naive'].index, df_test['b2bd'].apply(lambda x: x['targeted_regularization_ae_cil']),
-                    df_test['b2bd'].apply(lambda x: x['targeted_regularization_ae_ciu']), alpha=.5)
+    ax.fill_between(df_test['naive'].index, df_test['b2bd'].apply(lambda x: x['targeted_regularization_ae_cil']),df_test['b2bd'].apply(lambda x: x['targeted_regularization_ae_ciu']), alpha=.5)
     line4, = ax.plot(df_test['T_learn'].apply(lambda x: x['baseline_ae']), marker='o')
-    ax.fill_between(df_test['naive'].index, df_test['T_learn'].apply(lambda x: x['baseline_ae_cil']),
-                    df_test['T_learn'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
+    ax.fill_between(df_test['naive'].index, df_test['T_learn'].apply(lambda x: x['baseline_ae_cil']),df_test['T_learn'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
     line5, = ax.plot(df_test['Hydranet'].apply(lambda x: x['baseline_ae']), marker='o')
-    ax.fill_between(df_test['naive'].index, df_test['Hydranet'].apply(lambda x: x['baseline_ae_cil']),
-                    df_test['Hydranet'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
+    ax.fill_between(df_test['naive'].index, df_test['Hydranet'].apply(lambda x: x['baseline_ae_cil']),df_test['Hydranet'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
     line6, = ax.plot(df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae']), marker='o')
-    ax.fill_between(df_test['naive'].index, df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae_cil']),
-                    df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae_ciu']), alpha=.5)
+    ax.fill_between(df_test['naive'].index, df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae_cil']),df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae_ciu']), alpha=.5)
 
     plt.legend(handles=handles, labels=labels)
     plt.xlabel(main_param)
@@ -597,7 +592,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
 
     ###### RELATIVE ERROR #######
     fig, ax = plt.subplots()
-    line1, = ax.plot(df_train['naive'].apply(lambda x: x['pe']), marker='o')
+    line1, = ax.plot(df_train['naive'].apply(lambda x: x['baseline_pe']), marker='o')
     #ax.fill_between(df_train['naive'].index, df_train['naive'].apply(lambda x: x['ae_cil']),df_train['naive'].apply(lambda x: x['ae_ciu']), alpha=.5)
     line2, = ax.plot(df_train['b2bd'].apply(lambda x: x['baseline_pe']), marker='o')
     #ax.fill_between(df_train['naive'].index, df_train['b2bd'].apply(lambda x: x['baseline_ae_cil']),df_train['b2bd'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
@@ -616,7 +611,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     fig.savefig(os.path.join(output_dir, main_param + '_pe' + '_in-sample'))
 
     fig, ax = plt.subplots()
-    line1, = ax.plot(df_test['naive'].apply(lambda x: x['pe']), marker='o')
+    line1, = ax.plot(df_test['naive'].apply(lambda x: x['baseline_pe']), marker='o')
     #ax.fill_between(df_test['naive'].index, df_test['naive'].apply(lambda x: x['pe_cil']),df_test['naive'].apply(lambda x: x['ae_ciu']), alpha=.5)
     line2, = ax.plot(df_test['b2bd'].apply(lambda x: x['baseline_pe']), marker='o')
     #ax.fill_between(df_test['naive'].index, df_test['b2bd'].apply(lambda x: x['baseline_ae_cil']),df_test['b2bd'].apply(lambda x: x['baseline_ae_ciu']), alpha=.5)
@@ -640,7 +635,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     with open(file, 'w') as sumfile:
         sumfile.write('In-sample\n')
         sumfile.write('Naive estimator error:\n')
-        sumfile.write('{}\n'.format(df_train['naive'].apply(lambda x: x['ae']).to_string()))
+        sumfile.write('{}\n'.format(df_train['naive'].apply(lambda x: x['baseline_ae']).to_string()))
         sumfile.write('B2BD baseline error:\n')
         sumfile.write('{}\n'.format(df_train['b2bd'].apply(lambda x: x['baseline_ae']).to_string()))
         sumfile.write('B2BD T-reg error:\n')
@@ -655,7 +650,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
 
         sumfile.write('Out-sample\n')
         sumfile.write('Naive estimator error:\n')
-        sumfile.write('{}\n'.format(df_test['naive'].apply(lambda x: x['ae']).to_string()))
+        sumfile.write('{}\n'.format(df_test['naive'].apply(lambda x: x['baseline_ae']).to_string()))
         sumfile.write('B2BD baseline error:\n')
         sumfile.write('{}\n'.format(df_test['b2bd'].apply(lambda x: x['baseline_ae']).to_string()))
         sumfile.write('B2BD T-reg error:\n')
@@ -669,6 +664,9 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
         sumfile.write('*******\n')
 
     #### Generate latex table
+    print('Generate table')
+    generate_result_table_syn(os.path.join(output_dir, 'out_sample.txt'), df_test)
+    generate_result_table_syn(os.path.join(output_dir, 'out_sample.txt'), df_train)
 
 
 def collect_results_ihdp(input_dir):
@@ -790,37 +788,49 @@ def collect_results_ihdp(input_dir):
             # Split level (0: b2bd: train, test; 0: Hydra: train, test; 0: T-learn: train, test...)
 
             if estim == 'Hydranet':
-                # True and naive values
-                result_dict[split]['true'] = np.mean(result_dict[split]['true'], axis=0)
-                result_dict[split]['naive']['baseline'] = np.mean(result_dict[split]['naive']['baseline'], axis=0)
-                result_dict[split]['naive']['ae'] = np.sum(
-                    np.abs(result_dict[split]['true'] - result_dict[split]['naive']['baseline']))
-                result_dict[split]['naive']['pe'] = result_dict[split]['naive']['ae'] / np.sum(
-                    result_dict[split]['true']) * 100
+                # True and naive estim values
+                true_vec = np.asarray(result_dict[split]['true'])
+                naive_vec = np.asarray(result_dict[split]['naive']['baseline'])
+                naive_ci_l, naive_ci_u = bootstrap((np.sum(np.abs((true_vec - naive_vec)), axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
+
+                result_dict[split]['true'] = np.mean(true_vec, axis=0)
+                result_dict[split]['naive']['baseline'] = np.mean(naive_vec, axis=0)
+                result_dict[split]['naive']['baseline_ae'] = np.sum(np.abs(true_vec - naive_vec), axis=1).mean()
+                result_dict[split]['naive']['baseline_pe'] = np.sum(np.abs(true_vec - naive_vec))/np.sum(np.abs(true_vec)) *100
+                result_dict[split]['naive']['baseline_ae_ciu'] = naive_ci_u
+                result_dict[split]['naive']['baseline_ae_cil'] = naive_ci_l
 
                 for model in ['baseline', 'targeted_regularization']:
-                    result_dict[split][estim][model] = np.mean(result_dict[split][estim][model], axis=0)
-                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(
-                        np.abs(result_dict[split][estim][model] - result_dict[split]['true']))
-                    result_dict[split][estim]['{}_pe'.format(model)] = result_dict[split][estim][
-                                                                           '{}_ae'.format(model)] / np.sum(
-                        result_dict[split]['true']) * 100
+                    hydra_vec = np.asarray(result_dict[split][estim][model])
+                    Hydra_ci_l, Hydra_ci_u = bootstrap((np.sum(np.abs(true_vec - hydra_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
+
+                    result_dict[split][estim][model] = np.mean(hydra_vec, axis=0)
+                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(np.abs(true_vec - hydra_vec), axis=1).mean()
+                    result_dict[split][estim]['{}_pe'.format(model)] = np.sum(np.abs(true_vec - hydra_vec))/np.sum(np.abs(true_vec)) *100
+                    result_dict[split][estim]['{}_ae_ciu'.format(model)] = Hydra_ci_u
+                    result_dict[split][estim]['{}_ae_cil'.format(model)] = Hydra_ci_l
 
             elif estim == 'b2bd':
                 for model in ['baseline', 'targeted_regularization']:
-                    result_dict[split][estim][model] = np.mean(result_dict[split][estim][model], axis=0)
-                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(
-                        np.abs(result_dict[split][estim][model] - result_dict[split]['true']))
-                    result_dict[split][estim]['{}_pe'.format(model)] = result_dict[split][estim][
-                                                                           '{}_ae'.format(model)] / np.sum(
-                        result_dict[split]['true']) * 100
+                    b2bd_vec = np.asarray(result_dict[split][estim][model])
+                    b2bd_ci_l, b2bd_ci_u = bootstrap((np.sum(np.abs(true_vec - b2bd_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
+
+                    result_dict[split][estim][model] = np.mean(b2bd_vec, axis=0)
+                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(np.abs(true_vec - b2bd_vec), axis=1).mean()
+                    result_dict[split][estim]['{}_pe'.format(model)] = np.sum(np.abs(b2bd_vec - naive_vec))/np.sum(np.abs(true_vec)) *100
+                    result_dict[split][estim]['{}_ae_ciu'.format(model)] = b2bd_ci_u
+                    result_dict[split][estim]['{}_ae_cil'.format(model)] = b2bd_ci_l
 
             elif estim == 'T_learn':
-                result_dict[split][estim]['baseline'] = np.mean(result_dict[split][estim]['baseline'], axis=0)
-                result_dict[split][estim]['baseline_ae'] = np.sum(
-                    np.abs(result_dict[split][estim]['baseline'] - result_dict[split]['true']))
-                result_dict[split][estim]['baseline_pe'] = result_dict[split][estim]['baseline_ae'] / np.sum(
-                    result_dict[split]['true']) * 100
+                tlearn_vec = np.asarray(result_dict[split][estim]['baseline'])
+                tlearn_ci_l, tlearn_ci_u = bootstrap((np.sum(np.abs(true_vec - tlearn_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
+
+                result_dict[split][estim]['baseline'] = np.mean(tlearn_vec, axis=0)
+                result_dict[split][estim]['baseline_ae'] = np.sum(np.abs(true_vec - tlearn_vec), axis=1).mean()
+                result_dict[split][estim]['baseline_pe'] = np.sum(np.abs(tlearn_vec - naive_vec))/np.sum(np.abs(true_vec)) *100
+                result_dict[split][estim]['baseline_ae_ciu'] = tlearn_ci_u
+                result_dict[split][estim]['baseline_ae_cil'] = tlearn_ci_l
+
 
     return result_dict
 
@@ -835,7 +845,7 @@ def analyse_results_ihdp(all_res_dict, output_dir):
     file = os.path.join(output_dir, 'summary.txt')
     with open(file, 'w') as sumfile:
         sumfile.write('In-sample\n')
-        sumfile.write('Naive estimator error: {}\n'.format(df_train['naive']['ae']))
+        sumfile.write('Naive estimator error: {}\n'.format(df_train['naive']['baseline_ae']))
         sumfile.write('B2BD baseline error: {}\n'.format(df_train['b2bd']['baseline_ae']))
         sumfile.write('B2BD T-reg error: {}\n'.format(df_train['b2bd']['targeted_regularization_ae']))
         sumfile.write('T-learner error: {}\n'.format(df_train['T_learn']['baseline_ae']))
@@ -844,7 +854,7 @@ def analyse_results_ihdp(all_res_dict, output_dir):
         sumfile.write('*******\n')
 
         sumfile.write('Out-sample\n')
-        sumfile.write('Naive estimator error: {}\n'.format(df_test['naive']['ae']))
+        sumfile.write('Naive estimator error: {}\n'.format(df_test['naive']['baseline_ae']))
         sumfile.write('B2BD baseline error: {}\n'.format(df_test['b2bd']['baseline_ae']))
         sumfile.write('B2BD T-reg error: {}\n'.format(df_test['b2bd']['targeted_regularization_ae']))
         sumfile.write('T-learner error: {}\n'.format(df_test['T_learn']['baseline_ae']))
@@ -852,6 +862,8 @@ def analyse_results_ihdp(all_res_dict, output_dir):
         sumfile.write('Hydranet T-reg error: {}\n'.format(df_test['Hydranet']['targeted_regularization_ae']))
         sumfile.write('*******\n')
 
+    # Generate result table
+    generate_result_table_ihdp(os.path.join(output_dir,'out_sample.txt'), df_train, df_test, err_type='ae')
 
 def main():
 

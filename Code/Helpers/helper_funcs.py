@@ -108,6 +108,7 @@ def load_data(file_path):
 
     return q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index
 
+
 def load_data_dr(file_path):
     """
     loading train test experiment results
@@ -121,6 +122,7 @@ def load_data_dr(file_path):
     t = data['t']
 
     return q_t0, q_t1, g, y, t, index
+
 
 def load_data_t(file_path):
     """
@@ -220,3 +222,36 @@ class PlotLearning(keras.callbacks.Callback):
 
         plt.tight_layout()
         plt.show()
+
+def generate_result_table_ihdp(file, train_table, test_table, err_type='ae'):
+    # Generate table for latex
+    index_ = pandas.Index(['naive', 'b2bd base', 'T-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
+
+    result_table_tr = pandas.concat([
+                      pandas.concat([train_table[1:].apply(lambda x: x['baseline_ae']),\
+                                     train_table[1:].apply(lambda x: (x['baseline_ae_ciu'] - x['baseline_ae_cil']) / 2)],axis=1),\
+                      pandas.concat([train_table[[2,4]].apply(lambda x: x['targeted_regularization_ae']),\
+                                     train_table[[2,4]].apply(lambda x: (x['targeted_regularization_ae_ciu'] - x['targeted_regularization_ae_cil']) / 2)],axis=1)\
+                                    ],axis=0)
+    result_table_tr.set_index(index_, drop=True, inplace=True)
+
+    result_table_te = pandas.concat([
+                    pandas.concat([test_table[1:].apply(lambda x: x['baseline_ae']), \
+                                    test_table[1:].apply(lambda x: (x['baseline_ae_ciu'] - x['baseline_ae_cil']) / 2)], axis=1), \
+                    pandas.concat([test_table[[2, 4]].apply(lambda x: x['targeted_regularization_ae']), \
+                                    test_table[[2, 4]].apply(lambda x: (x['targeted_regularization_ae_ciu'] - x['targeted_regularization_ae_cil']) / 2)],axis=1) \
+                                    ], axis=0)
+    result_table_te.set_index(index_, drop=True, inplace=True)
+
+    latex_table = pandas.concat([result_table_te, result_table_tr], axis=1)
+    with open(file, 'w') as tolatex_file:
+        tolatex_file.write(latex_table.to_latex())
+    return None
+
+
+def generate_result_table_syn(file, table):
+    # Generate table for latex
+    print(table)
+    with open(file, 'w') as tolatex_file:
+        file.write(table.to_latex())
+    return None
