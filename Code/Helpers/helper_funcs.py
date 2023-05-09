@@ -156,7 +156,7 @@ def truncate_all_by_g(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, truncate_level=0.05
 
     """
 
-    g = g.reshape((max(t) + 1)[0], len(y)).T
+    g = g.reshape((int(max(t)) + 1), len(y)).T
 
     g_ind = np.sum(g < truncate_level, axis=1)
 

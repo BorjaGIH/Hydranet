@@ -38,12 +38,12 @@ def psi_aiptw(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, truncate_level=0.05):
     q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y = truncate_all_by_g(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, truncate_level)
 
     t = t.flatten()
-    encoded_t = np.zeros((t.size, t.max() + 1))
-    encoded_t[np.arange(t.size), t] = 1
+    encoded_t = np.zeros((int(t.size), int(t.max()) + 1))
+    encoded_t[np.arange(int(t.size)), t.astype(int)] = 1
 
     fullq = np.sum(np.concatenate([q_t0, q_t1, q_t2, q_t3, q_t4], axis=1) * encoded_t, axis=1)
 
-    g = g.reshape(max(t) + 1, len(y)).T
+    g = g.reshape(int(max(t)) + 1, len(y)).T
     g_t = encoded_t * (1 / g)
 
     h1_0 = g_t[:, 1] - g_t[:, 0]

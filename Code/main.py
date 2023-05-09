@@ -434,8 +434,14 @@ def collect_results_syn(input_dir):
                         # Model level (when applicable)
                         base_dat_path = os.path.join(estim_dat_path, model, ('0_replication_' + split + '.npz'))
                         q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+
                         # Compute estimator
-                        psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g,truncate_level=0.)
+                        dr_flag = False # Flag for using aiptw for a doubly robust estimator with baseline hydranet
+
+                        if model=='baseline' and dr_flag:
+                            psi = psi_aiptw(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y,truncate_level=0.)
+                        else:
+                            psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.)
 
                         result_dict[split][estim][model].append(psi)
 
