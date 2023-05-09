@@ -11,5 +11,5 @@ In order to generate data for running experiments, run Input_data/data_generator
 Run the following command to use Hydranet and replicate experiments and results
 
 ``
-python Code/main.py --input_dir='<path_to_Hydranet>' --output_dir='<path_to_Hydranet/Results>' --Train=True --Analyze=True --dataset=<'ihdp' or 'synthetic'> --main_param=<'bias', 'n_confs' or 'data_size'> --device=<'CPU' or 'GPU'>
+python Code/main.py --input_dir='<your_path_to_Hydranet>' --output_dir='<your_path_to_Hydranet/Results>' --Train=True --Analyze=True --dataset=<'ihdp' or 'synthetic'> --main_param=<'bias', 'n_confs' or 'data_size'> --device=<'CPU' or 'GPU'>
 `` 
