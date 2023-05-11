@@ -239,8 +239,9 @@ elif dataset=='synthetic':
                 sel_covar_names = ['x{}'.format(i) for i in range(n_confs)]
                 covars = X[sel_covar_names]
                 z_ini = covars**2
-                z = (num_treats * ((z_ini - z_ini.min()) / (z_ini.max() - z_ini.min()))).astype(int)
-                z = np.random.randint(low=0, high=num_treats, size=(data_size, 1))
+                z_ini = z_ini.sum(axis=1)
+                z = np.floor(num_treats * ((z_ini - z_ini.min()) / (z_ini.max() - z_ini.min())))
+                #z = np.random.randint(low=0, high=num_treats, size=(data_size, 1))
                 z_f = treatment_assignment_op(z, num_treats)
 
                 # Output
