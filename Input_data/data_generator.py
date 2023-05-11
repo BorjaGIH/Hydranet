@@ -276,6 +276,7 @@ elif dataset=='synthetic':
                 y[z == 3] = y_3[z == 3]
                 y[z == 4] = y_4[z == 4]
 
+                z = z.values.reshape(-1,1)
                 covars_tab = np.concatenate([X,mu_0, mu_1, mu_2, mu_3, mu_4, y_0, y_1, y_2, y_3, y_4, y, z], axis=1)
                 covars_tab = pd.DataFrame(covars_tab, columns=columns)
 
