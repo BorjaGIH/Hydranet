@@ -1,0 +1,13 @@
+\begin{tabular}{lllllll}
+\toprule
+{} & \multicolumn{2}{l}{bias 5} & \multicolumn{2}{l}{bias 10} & \multicolumn{2}{l}{bias 30} \\
+{} &      In-Sample &    Out-Sample &       In-Sample &     Out-Sample &       In-Sample &      Out-Sample \\
+\midrule
+naive          &  82.07 ± 14.62 &  42.31 ± 5.96 &  124.52 ± 23.92 &  58.04 ± 15.49 &  292.47 ± 86.71 &  114.67 ± 69.37 \\
+b2bd base      &   35.11 ± 9.58 &  24.65 ± 6.26 &   89.23 ± 23.05 &  55.05 ± 11.36 &   166.5 ± 68.73 &    110.4 ± 49.8 \\
+T-learn base   &   39.02 ± 7.12 &  41.54 ± 7.63 &   68.64 ± 16.57 &  76.07 ± 18.83 &   137.2 ± 58.85 &  190.44 ± 91.33 \\
+Hydranet base  &    6.52 ± 2.38 &   5.98 ± 2.37 &      9.7 ± 4.07 &    8.69 ± 3.94 &    13.54 ± 4.72 &     8.05 ± 2.52 \\
+b2bd t-reg     &   25.75 ± 9.81 &  25.75 ± 6.49 &   51.09 ± 22.42 &  51.09 ± 12.27 &   98.73 ± 75.31 &   98.73 ± 38.02 \\
+Hydranet t-reg &    4.03 ± 0.99 &   4.03 ± 0.92 &       nan ± nan &      nan ± nan &     9.32 ± 5.22 &     9.32 ± 2.32 \\
+\bottomrule
+\end{tabular}

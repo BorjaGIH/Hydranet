@@ -1,0 +1,13 @@
+\begin{tabular}{lllllll}
+\toprule
+{} & \multicolumn{2}{l}{data\_size 2000} & \multicolumn{2}{l}{data\_size 5000} & \multicolumn{2}{l}{data\_size 10000} \\
+{} &       In-Sample &     Out-Sample &      In-Sample &    Out-Sample &       In-Sample &    Out-Sample \\
+\midrule
+naive          &   77.23 ± 17.96 &   35.29 ± 8.46 &    23.45 ± 7.5 &  13.35 ± 3.93 &    30.34 ± 7.51 &   16.07 ± 3.5 \\
+b2bd base      &     30.97 ± 5.3 &   19.95 ± 3.65 &    19.39 ± 4.2 &  12.46 ± 3.43 &    15.59 ± 3.73 &  11.83 ± 2.46 \\
+T-learn base   &    37.85 ± 9.01 &   40.44 ± 8.81 &   13.95 ± 5.34 &  16.11 ± 5.52 &    21.76 ± 4.15 &  23.01 ± 4.34 \\
+Hydranet base  &  130.98 ± 22.48 &  81.93 ± 16.15 &  16.83 ± 20.88 &   6.04 ± 7.29 &       0.0 ± 0.0 &     0.0 ± 0.0 \\
+b2bd t-reg     &    22.74 ± 5.11 &   22.74 ± 5.35 &    9.04 ± 4.15 &   9.04 ± 3.28 &     5.87 ± 2.63 &   5.87 ± 1.84 \\
+Hydranet t-reg &     7.76 ± 2.61 &    7.76 ± 2.76 &     2.74 ± 1.9 &   2.74 ± 1.91 &     1.57 ± 1.07 &   1.57 ± 1.04 \\
+\bottomrule
+\end{tabular}
