@@ -531,7 +531,7 @@ def collect_results_syn(input_dir, dr_flag):
     return result_dict
 
 
-def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
+def analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir, dr_flag):
     # Process results dict
     reform = {(outerKey, innerKey): values for outerKey, innerDict in all_res_dict[main_param].items() for innerKey, values in innerDict.items()}
     all_res_df = pd.DataFrame(reform)
@@ -569,7 +569,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     plt.legend(handles=handles, labels= labels)
     plt.xlabel(main_param)
     plt.ylabel('Error')
-    fig.savefig(os.path.join(output_dir, main_param + '_ae' + '_in-sample'))
+    fig.savefig(os.path.join(output_dir, main_param + '_ae' + '_in-sample.pdf'))
 
     fig, ax = plt.subplots()
     line1, = ax.plot(df_test['naive'].apply(lambda x: x['baseline_ae']), marker='o')
@@ -588,7 +588,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     plt.legend(handles=handles, labels=labels)
     plt.xlabel(main_param)
     plt.ylabel('Error')
-    fig.savefig(os.path.join(output_dir, main_param + '_ae' + '_out-sample'))
+    fig.savefig(os.path.join(output_dir, main_param + '_ae' + '_out-sample.pdf'))
 
     ###### RELATIVE ERROR #######
     fig, ax = plt.subplots()
@@ -608,7 +608,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     plt.legend(handles=handles, labels=labels)
     plt.xlabel(main_param)
     plt.ylabel('Percentual Error')
-    fig.savefig(os.path.join(output_dir, main_param + '_pe' + '_in-sample'))
+    fig.savefig(os.path.join(output_dir, main_param + '_pe' + '_in-sample.pdf'))
 
     fig, ax = plt.subplots()
     line1, = ax.plot(df_test['naive'].apply(lambda x: x['baseline_pe']), marker='o')
@@ -627,7 +627,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
     plt.legend(handles=handles, labels=labels)
     plt.xlabel(main_param)
     plt.ylabel('Percentual Error')
-    fig.savefig(os.path.join(output_dir, main_param + '_pe' + '_out-sample'))
+    fig.savefig(os.path.join(output_dir, main_param + '_pe' + '_out-sample.pdf'))
 
 
     #### Summary file
@@ -664,9 +664,7 @@ def analyse_results_syn(all_res_dict, main_param, output_dir, dr_flag):
         sumfile.write('*******\n')
 
     #### Generate latex table
-    print('Generate table')
-    generate_result_table_syn(os.path.join(output_dir, 'out_sample.txt'), df_test)
-    generate_result_table_syn(os.path.join(output_dir, 'out_sample.txt'), df_train)
+    generate_result_table_syn(os.path.join(output_dir, 'summ_table.txt'), df_train, df_test, main_param_dict, main_param)
 
 
 def collect_results_ihdp(input_dir):
@@ -863,7 +861,7 @@ def analyse_results_ihdp(all_res_dict, output_dir):
         sumfile.write('*******\n')
 
     # Generate result table
-    generate_result_table_ihdp(os.path.join(output_dir,'out_sample.txt'), df_train, df_test, err_type='ae')
+    generate_result_table_ihdp(os.path.join(output_dir,'summ_table.txt'), df_train, df_test, err_type='ae')
 
 def main():
 
@@ -969,7 +967,7 @@ def main():
                 input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
                 all_res_dict[main_param][val] = collect_results_syn(input_dir_, dr_flag)
             output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param)
-            analyse_results_syn(all_res_dict, main_param, output_dir_, dr_flag)
+            analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir_, dr_flag)
 
         elif dataset == 'ihdp':
             # Build paths
