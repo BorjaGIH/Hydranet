@@ -125,10 +125,11 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
         loss = loss
 
     train_index, test_index = train_test_split(np.arange(x.shape[0]), test_size=0.2, random_state=1, shuffle=True)
-
+                
     x_train, x_test = x.iloc[train_index], x.iloc[test_index]
     y_train, y_test = y[train_index], y[test_index]
     t_train, t_test = t[train_index], t[test_index]
+    
 
     yt_train = np.concatenate([y_train, t_train], 1)
 
@@ -257,9 +258,9 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
     return test_outputs, train_outputs
 
 
-def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size):
+def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size, reps):
 
-    simulation_files = sorted(glob.glob("{}/*.csv".format(input_dir)))
+    simulation_files = sorted(glob.glob("{}/*.csv".format(input_dir)))[0:reps]
 
     for idx, simulation_file in enumerate(simulation_files):
         print(simulation_file)
@@ -269,19 +270,13 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
         os.makedirs(simulation_output_dir, exist_ok=True)
 
         x = load_and_format_covariates(simulation_file, dataset)
-        if num_treats==5:
-            t, y, y0, y1, y2, y3, y4, mu_0, mu_1, mu_2, mu_3, mu_4 = load_other_vars(simulation_file)
-            np.savez_compressed(os.path.join(simulation_output_dir, "simulation_outputs.npz"),\
-                                t=t, y0=y0, y1=y1, y2=y2, y3=y3, y4=y4, mu_0=mu_0, mu_1=mu_1, mu_2=mu_2, mu_3=mu_3, mu_4=mu_4)
-        else:
-            t, y, y0, y1, y2, y3, y4, y5, y6, y7, y8, y9,\
-                mu_0, mu_1, mu_2, mu_3, mu_4, mu_5, mu_6, mu_7, mu_8, mu_9 = load_other_vars(simulation_file)
-            np.savez_compressed(os.path.join(simulation_output_dir, "simulation_outputs.npz"),
-                                t=t, y0=y0, y1=y1, y2=y2, y3=y3, y4=y4, y5=y5, y6=y6, y7=y7, y8=y8, y9=y9,\
-                                mu_0=mu_0, mu_1=mu_1, mu_2=mu_2, mu_3=mu_3, mu_4=mu_4, mu_5=mu_5, mu_6=mu_6, mu_7=mu_7, mu_8=mu_8, mu_9=mu_9)
-
+        
+        t, y, y0, y1, y2, y3, y4, mu_0, mu_1, mu_2, mu_3, mu_4 = load_other_vars(simulation_file)
+        
+        np.savez_compressed(os.path.join(simulation_output_dir, "simulation_outputs.npz"),t=t, y0=y0, y1=y1, y2=y2, y3=y3, y4=y4, mu_0=mu_0, mu_1=mu_1, mu_2=mu_2, mu_3=mu_3, mu_4=mu_4)
+        
         ############# RUN THE DIFFERENT ESTIMATORS ##############
-
+        
         # T-learner
         test_outputs_tlearn, train_output_tlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
 
@@ -368,7 +363,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                     np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)
 
                 
-def collect_results_syn(input_dir, dr_flag):
+def collect_results_syn(input_dir, dr_flag, num_treats, reps):
 
     result_dict = {'train':
                     {'true': [],
@@ -393,7 +388,7 @@ def collect_results_syn(input_dir, dr_flag):
                    }
 
     estimator = ['Hydranet', 'b2bd', 'T_learn']
-    input_folders = sorted(os.listdir(input_dir))
+    input_folders = sorted(os.listdir(input_dir))[0:reps]
 
     # Retrieve values
     for idx, folder in enumerate(input_folders):
@@ -415,6 +410,12 @@ def collect_results_syn(input_dir, dr_flag):
 
                     # From Hydranet take also the TRUE value and the BIASED value
                     q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+                    
+                    # Sanity check
+                    #if  max(t)!=(num_treats-1):
+                    #    print('{} {}'.format(estim,folder))
+                    #    continue
+                        
                     mu_0, mu_1, mu_2, mu_3, mu_4 = a[index], b[index], c[index], d[index], e[index]
 
                     truth1_0 = (mu_1 - mu_0).mean()
@@ -434,10 +435,15 @@ def collect_results_syn(input_dir, dr_flag):
                         # Model level (when applicable)
                         base_dat_path = os.path.join(estim_dat_path, model, ('0_replication_' + split + '.npz'))
                         q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+                        
+                        # Sanity check
+                        #if max(t)!=(num_treats-1):
+                        #    print('{} {}'.format(estim,folder))
+                        #    continue
 
                         # Compute estimator
                         if model=='baseline' and dr_flag:
-                            psi = psi_aiptw(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y,truncate_level=0.)
+                            psi = psi_aiptw(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, num_treats, truncate_level=0.01)
                         else:
                             psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.)
 
@@ -450,6 +456,12 @@ def collect_results_syn(input_dir, dr_flag):
                             # Model level (when applicable)
                             base_dat_path = os.path.join(estim_dat_path, ate, model, ('0_replication_' + split + '.npz'))
                             q_t0, q_t1, g, y, t, index = load_data_dr(base_dat_path)
+                            
+                            # Sanity check
+                            #if max(t)!=(num_treats-1):
+                            #    print('{} {}'.format(estim,folder))
+                            #    continue
+                                
                             # Compute estimator
                             psi = psi_naive_dr(q_t0, q_t1, g,truncate_level=0.)
 
@@ -459,10 +471,15 @@ def collect_results_syn(input_dir, dr_flag):
                     result_dict[split][estim]['baseline'] = list(zip(result_dict[split]['b2bd']['ate1_0']['baseline'], result_dict[split]['b2bd']['ate2_0']['baseline'], result_dict[split]['b2bd']['ate3_0']['baseline'], result_dict[split]['b2bd']['ate4_0']['baseline']))
                     result_dict[split][estim]['targeted_regularization'] = list(zip(result_dict[split]['b2bd']['ate1_0']['targeted_regularization'], result_dict[split]['b2bd']['ate2_0']['targeted_regularization'], result_dict[split]['b2bd']['ate3_0']['targeted_regularization'], result_dict[split]['b2bd']['ate4_0']['targeted_regularization']))
 
-
                 elif estim=='T_learn':
                     base_dat_path = os.path.join(estim_dat_path, 'baseline', ('0_replication_' + split + '.npz'))
                     q_t0, q_t1, q_t2, q_t3, q_t4, y, t, index = load_data_t(base_dat_path)
+                    
+                    # Sanity check
+                    #if max(t)!=(num_treats-1):
+                    #    print('{} {}'.format(estim,folder))
+                    #    continue
+                        
                     # Compute estimator
                     psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g,truncate_level=0.)
 
@@ -488,45 +505,75 @@ def collect_results_syn(input_dir, dr_flag):
                 # True and naive estim values
                 true_vec = np.asarray(result_dict[split]['true'])
                 naive_vec = np.asarray(result_dict[split]['naive']['baseline'])
-                naive_ci_l, naive_ci_u = bootstrap((np.sum(np.abs((true_vec - naive_vec)), axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
 
-                result_dict[split]['true'] = np.mean(true_vec, axis=0)
-                result_dict[split]['naive']['baseline'] = np.mean(naive_vec, axis=0)
-                result_dict[split]['naive']['baseline_ae'] = np.sum(np.abs(true_vec - naive_vec), axis=1).mean()
-                result_dict[split]['naive']['baseline_pe'] = np.sum(np.abs(true_vec - naive_vec))/np.sum(np.abs(true_vec)) *100
+                # Sanity check
+                if (naive_vec.shape[0] == 0) or (naive_vec.shape[0]!=true_vec.shape[0]):
+                    continue
+                    
+                naive_ci_l, naive_ci_u = bootstrap((np.nansum(np.abs((true_vec - naive_vec)), axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
+
+                result_dict[split]['true'] = np.nanmean(true_vec, axis=0)
+                result_dict[split]['naive']['baseline'] = np.nanmean(naive_vec, axis=0)
+                result_dict[split]['naive']['baseline_ae'] = np.nanmean(np.nansum(np.abs(true_vec - naive_vec), axis=1))
+                result_dict[split]['naive']['baseline_pe'] = np.nansum(np.abs(true_vec - naive_vec))/np.nansum(np.abs(true_vec)) *100
                 result_dict[split]['naive']['baseline_ae_ciu'] = naive_ci_u
                 result_dict[split]['naive']['baseline_ae_cil'] = naive_ci_l
 
                 for model in ['baseline', 'targeted_regularization']:
                     hydra_vec = np.asarray(result_dict[split][estim][model])
-                    Hydra_ci_l, Hydra_ci_u = bootstrap((np.sum(np.abs(true_vec - hydra_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
+                    #print(hydra_vec)
+                    #print('***')
+                    # Sanity check
+                    #if (hydra_vec.shape[0] == 0) or (hydra_vec.shape[0]!=true_vec.shape[0]):
+                    #    print('Shape problem hydra')
+                    #    continue
+                    
+                    Hydra_ci_l, Hydra_ci_u = bootstrap((np.nansum(np.abs(true_vec - hydra_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
 
-                    result_dict[split][estim][model] = np.mean(hydra_vec, axis=0)
-                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(np.abs(true_vec - hydra_vec), axis=1).mean()
-                    result_dict[split][estim]['{}_pe'.format(model)] = np.sum(np.abs(true_vec - hydra_vec))/np.sum(np.abs(true_vec)) *100
+                    result_dict[split][estim][model] = np.nanmean(hydra_vec, axis=0)
+                    result_dict[split][estim]['{}_ae'.format(model)] = np.nanmean(np.nansum(np.abs(true_vec - hydra_vec), axis=1))
+                    result_dict[split][estim]['{}_pe'.format(model)] = np.nansum(np.abs(true_vec - hydra_vec))/np.nansum(np.abs(true_vec)) *100
                     result_dict[split][estim]['{}_ae_ciu'.format(model)] = Hydra_ci_u
                     result_dict[split][estim]['{}_ae_cil'.format(model)] = Hydra_ci_l
 
             elif estim == 'b2bd':
                 for model in ['baseline', 'targeted_regularization']:
                     b2bd_vec = np.asarray(result_dict[split][estim][model])
-                    b2bd_ci_l, b2bd_ci_u = bootstrap((np.sum(np.abs(true_vec - b2bd_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
+                    #print(b2bd_vec)
+                    #print('***')
+                    # Sanity check
+                    #if (b2bd_vec.shape[0] == 0) or (b2bd_vec.shape[0]!=true_vec.shape[0]):
+                    #    continue
+                    
+                    b2bd_ci_l, b2bd_ci_u = bootstrap((np.nansum(np.abs(true_vec - b2bd_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
 
-                    result_dict[split][estim][model] = np.mean(b2bd_vec, axis=0)
-                    result_dict[split][estim]['{}_ae'.format(model)] = np.sum(np.abs(true_vec - b2bd_vec), axis=1).mean()
-                    result_dict[split][estim]['{}_pe'.format(model)] = np.sum(np.abs(b2bd_vec - naive_vec))/np.sum(np.abs(true_vec)) *100
+                    result_dict[split][estim][model] = np.nanmean(b2bd_vec, axis=0)
+                    result_dict[split][estim]['{}_ae'.format(model)] = np.nanmean(np.nansum(np.abs(true_vec - b2bd_vec), axis=1))
+                    result_dict[split][estim]['{}_pe'.format(model)] = np.nansum(np.abs(b2bd_vec - naive_vec))/np.nansum(np.abs(true_vec)) *100
                     result_dict[split][estim]['{}_ae_ciu'.format(model)] = b2bd_ci_u
                     result_dict[split][estim]['{}_ae_cil'.format(model)] = b2bd_ci_l
 
             elif estim == 'T_learn':
                 tlearn_vec = np.asarray(result_dict[split][estim]['baseline'])
-                tlearn_ci_l, tlearn_ci_u = bootstrap((np.sum(np.abs(true_vec - tlearn_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
 
-                result_dict[split][estim]['baseline'] = np.mean(tlearn_vec, axis=0)
-                result_dict[split][estim]['baseline_ae'] = np.sum(np.abs(true_vec - tlearn_vec), axis=1).mean()
-                result_dict[split][estim]['baseline_pe'] = np.sum(np.abs(tlearn_vec - naive_vec))/np.sum(np.abs(true_vec)) *100
+                # Sanity check
+                #if (tlearn_vec.shape[0] == 0) or (tlearn_vec.shape[0]!=true_vec.shape[0]):
+                #    print('Shape problem')
+                #    print(tlearn_vec.shape[0])
+                #    print(true_vec.shape[0])
+                #    print(tlearn_vec)
+                #    continue
+                
+                tlearn_ci_l, tlearn_ci_u = bootstrap((np.nansum(np.abs(true_vec - tlearn_vec),axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
+
+                result_dict[split][estim]['baseline'] = np.nanmean(tlearn_vec, axis=0)
+                result_dict[split][estim]['baseline_ae'] = np.nanmean(np.nansum(np.abs(true_vec - tlearn_vec), axis=1))
+                result_dict[split][estim]['baseline_pe'] = np.nansum(np.abs(tlearn_vec - naive_vec))/np.nansum(np.abs(true_vec)) *100
                 result_dict[split][estim]['baseline_ae_ciu'] = tlearn_ci_u
                 result_dict[split][estim]['baseline_ae_cil'] = tlearn_ci_l
+            
+            else:
+                sys.exit('wrong estimator list')
 
     return result_dict
 
@@ -876,10 +923,11 @@ def main():
     parser.add_argument('--loss', type=eval, default=hydranet_loss)
     parser.add_argument('--loss_dr', type=eval, default=dragonnet_loss_binarycross_dr)
     parser.add_argument("--val_split", type=float, default=0.2)
-    parser.add_argument("--batch_size", type=int, default=100)
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--Train", type=eval, default=False, choices= [True, False])
     parser.add_argument("--Analyze", type=eval, default=False , choices=[True, False])
     parser.add_argument("--DR_flag", type=eval, default=False, choices=[True, False])
+    parser.add_argument("--reps", type=int, default=20)
 
     args = parser.parse_args()
     num_treats = args.num_treats
@@ -895,15 +943,16 @@ def main():
     Train = args.Train
     Analyze = args.Analyze
     dr_flag = args.DR_flag
+    reps = args.reps
 
     # System arguments
     main_param_dict = {'bias':[2,5,10,30],
                         'n_confs':[2, 5, 10, 18],
-                        'data_size':[1000, 2000, 5000, 10000]
+                        'data_size':[1000, 2000, 5000, 10000] 
                       }
     all_res_dict = {'bias': {2:[], 5:[], 10:[], 30:[]},
                        'n_confs': {2:[], 5:[], 10:[], 18:[]},
-                       'data_size': {1000:[], 2000:[], 5000:[], 10000:[]}
+                       'data_size': {1000:[], 2000:[], 5000:[], 10000:[]} 
                        }
     tf.compat.v1.enable_eager_execution()
 
@@ -945,7 +994,7 @@ def main():
                     # Build paths
                     input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
                     output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                    run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size)
+                    run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps)
             elif dataset=='ihdp':
                 # Build paths
                 input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats)
@@ -965,7 +1014,7 @@ def main():
             for val in main_param_dict[main_param]:
                 # Build paths
                 input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                all_res_dict[main_param][val] = collect_results_syn(input_dir_, dr_flag)
+                all_res_dict[main_param][val] = collect_results_syn(input_dir_, dr_flag, num_treats, reps=reps)
             output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param)
             analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir_, dr_flag)
 

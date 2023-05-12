@@ -37,6 +37,7 @@ def analyse_generated_data(temp_all, path):
         sumfile.write('Percentage of T==2: {}\n'.format(sum(temp_all['z'] == 2) / len(temp_all)))
         sumfile.write('Percentage of T==3: {}\n'.format(sum(temp_all['z'] == 3) / len(temp_all)))
         sumfile.write('Percentage of T==4: {}\n'.format(sum(temp_all['z'] == 4) / len(temp_all)))
+        sumfile.write('Max T {}\n'.format(temp_all['z'].max()))
         sumfile.write('*******\n')
 
         ### Mean values of the true effects
@@ -149,19 +150,19 @@ if dataset=='ihdp':
         w = np.ones((covars.shape)) * 0.5  # offset matrix
 
         # Response surface functions (function and sampling from distribution)
-        f_0 = lambda x: np.exp(np.matmul((x + w), beta)) + bias_size * x[:,26]  # additive term for displacing the mean of the normal distribution based on T
-        f_1 = lambda x: np.log(np.abs(np.matmul(x, beta)) + 1e-10) + bias_size * x[:, 25]
-        f_2 = lambda x: np.matmul(x, beta) + bias_size * x[:, 27]
-        f_3 = lambda x: np.exp(np.matmul((x + w), beta)) + bias_size * x[:, 2]
-        f_4 = lambda x: np.log(np.abs(np.matmul((x + w), beta)) + 1e-10) + bias_size * x[:, 2]
+        f_0 = lambda x,t: np.exp(np.matmul((x + w), beta)) + bias_size * x[:,26] + t**2  # additive term for displacing the mean of the normal distribution based on T
+        f_1 = lambda x,t: np.log(np.abs(np.matmul(x, beta)) + 1e-10) + bias_size * x[:, 25] * t
+        f_2 = lambda x,t: np.matmul(x, beta) + bias_size * x[:, 27] + t**2
+        f_3 = lambda x,t: np.exp(np.matmul((x + w), beta) + t) + bias_size * x[:, 2]
+        f_4 = lambda x,t: np.log(np.abs(np.matmul((x + w), beta)) + 1e-10) + bias_size * x[:, 2] * t
         y_f = lambda x: np.random.normal(x, sigma)
 
         # Compute true effect
-        covars_tab['mu_0'] = f_0(covars.to_numpy())
-        covars_tab['mu_1'] = f_1(covars.to_numpy())
-        covars_tab['mu_2'] = f_2(covars.to_numpy())
-        covars_tab['mu_3'] = f_3(covars.to_numpy())
-        covars_tab['mu_4'] = f_4(covars.to_numpy())
+        covars_tab['mu_0'] = f_0(covars.to_numpy(),0)
+        covars_tab['mu_1'] = f_1(covars.to_numpy(),1)
+        covars_tab['mu_2'] = f_2(covars.to_numpy(),2)
+        covars_tab['mu_3'] = f_3(covars.to_numpy(),3)
+        covars_tab['mu_4'] = f_4(covars.to_numpy(),4)
 
         # Sample from normal distribution
         covars_tab['y_0'] = y_f(covars_tab.mu_0)
@@ -227,10 +228,6 @@ elif dataset=='synthetic':
                 # Parameters
                 sigma=1
 
-                # Baseline
-                u0 = np.random.uniform(size=(1,num_covars))
-                v0 = u0/np.linalg.norm(u0)
-
                 # Covariates
                 X = np.random.uniform(-1,1,size=(data_size, num_covars))
                 X = pd.DataFrame(X, columns=['x{}'.format(i) for i in range(num_covars)])
@@ -238,27 +235,35 @@ elif dataset=='synthetic':
                 # Treatment
                 sel_covar_names = ['x{}'.format(i) for i in range(n_confs)]
                 covars = X[sel_covar_names]
-                z_ini = covars**2
+                z_ini = 10*covars**2
                 z_ini = z_ini.sum(axis=1)
-                z = np.floor(num_treats * ((z_ini - z_ini.min()) / (z_ini.max() - z_ini.min())))
-                #z = np.random.randint(low=0, high=num_treats, size=(data_size, 1))
+                
+                z = np.round((num_treats-1) * ((z_ini - z_ini.min()) / (z_ini.max() - z_ini.min())))
+                      
+                #z = np.round((num_treats+1) * ((z_ini - z_ini.min()) / (z_ini.max() - z_ini.min())))
+                #z[z>=num_treats] = num_treats-1
+                      
                 z_f = treatment_assignment_op(z, num_treats)
 
                 # Output
-                uv = np.random.uniform(size=(1, num_covars))
-                vv = uv / np.linalg.norm(uv)
+                # Baseline effect
+                u0 = np.random.uniform(size=(1, num_covars))
+                v0 = u0 / np.linalg.norm(u0)
+
+                # T effect
                 ut = np.random.uniform(size=(1, num_covars))
                 vt = ut / np.linalg.norm(ut)
-                f0 = lambda x: 50*(1*np.matmul(v0,x.T) + 0.2*np.matmul(vv,x.T) + np.matmul(vt,x.T))
-                f1 = lambda x: 20*(2*np.matmul(v0,x.T) + 2*np.matmul(vv,x.T) + 5*bias*np.matmul(vt,x.T))
-                f2 = lambda x: 10*(np.matmul(v0,x.T) + 1*np.matmul(vv,x.T) + 3*np.matmul(vt,x.T))
+
+                f0 = lambda x, t: 30*np.matmul(v0,x.T) + 10*t**2*np.matmul(vt,x.T)
+                f1 = lambda x, t: 20*np.matmul(v0,x.T) + 5*t*bias*np.matmul(vt,x.T)
+                f2 = lambda x, t: 10*np.matmul(v0,x.T) + 5*np.log(np.abs(bias*t*np.matmul(vt,x.T)))
 
                 # True effect
-                mu_0 = f0(X.to_numpy()).reshape(-1, 1)
-                mu_1 = f1(X.to_numpy()).reshape(-1, 1)
-                mu_2 = f2(X.to_numpy()).reshape(-1, 1)
-                mu_3 = f1(X.to_numpy()).reshape(-1, 1)
-                mu_4 = f0(X.to_numpy()).reshape(-1, 1)
+                mu_0 = f0(X.to_numpy(),0).reshape(-1, 1)
+                mu_1 = f1(X.to_numpy(),1).reshape(-1, 1)
+                mu_2 = f2(X.to_numpy(),2).reshape(-1, 1)
+                mu_3 = f1(X.to_numpy(),3).reshape(-1, 1)
+                mu_4 = f0(X.to_numpy(),4).reshape(-1, 1)
 
 
                 # Sample from normal distribution

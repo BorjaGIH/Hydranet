@@ -152,13 +152,13 @@ def truncate_by_g(attribute, g, level=0.01):
         return attribute[g_ind==0]
 
 
-def truncate_all_by_g(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, truncate_level=0.05):
+def truncate_all_by_g(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, num_treats, truncate_level=0.05):
     """
     Helper function to clean up nuisance parameter estimates.
 
     """
 
-    g = g.reshape((int(max(t)) + 1), len(y)).T
+    g = g.reshape(num_treats, len(y)).T
 
     g_ind = np.sum(g < truncate_level, axis=1)
 
