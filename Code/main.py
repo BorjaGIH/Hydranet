@@ -10,11 +10,16 @@ from Neural_Net.losses import *
 from Estimation.estimators import *
 
 
-def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularization, loss, val_split, batch_size):
-    verbose = 0
+def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size):
+    verbose = 1
+    
     y_unscaled = y_unscaled.values.reshape(-1, 1)
     y_scaler = StandardScaler().fit(y_unscaled)
     y = y_scaler.transform(y_unscaled)
+    
+    x_scaler = StandardScaler().fit(x_unscaled)
+    x = x_scaler.transform(x_unscaled)
+        
     train_outputs = []
     test_outputs = []
 
@@ -30,7 +35,8 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     # Get train and test indexes
     train_index, test_index = train_test_split(np.arange(x.shape[0]), test_size=val_split, random_state=1, shuffle=True)
 
-    x_train, x_test = x.iloc[train_index], x.iloc[test_index]
+    x_train, x_test = x[train_index,:], x[test_index,:] # when scaled
+    #x_train, x_test = x.iloc[train_index], x.iloc[test_index] # when unscaled
     y_train, y_test = y[train_index], y[test_index]
     t_train, t_test = t[train_index], t[test_index]
 
@@ -39,7 +45,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     # With Adam
     hydranet.compile(
         optimizer=Adam(learning_rate=1e-3),
-        loss=loss, metrics=metrics, run_eagerly=False)
+        loss=loss, metrics=metrics, run_eagerly=True)
 
     adam_callbacks = [
         TerminateOnNaN(),
@@ -58,7 +64,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     sgd_lr = 1e-5
     momentum = 0.9
     hydranet.compile(optimizer=SGD(learning_rate=sgd_lr, momentum=momentum, nesterov=True),
-                      loss=loss, metrics=metrics, run_eagerly=False)
+                      loss=loss, metrics=metrics, run_eagerly=True)
     
     sgd_callbacks = [
         TerminateOnNaN(),
@@ -99,8 +105,8 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x, targeted_regularizatio
     yt_hat_test = hydranet.predict(x_test)
     yt_hat_train = hydranet.predict(x_train)
     
-    train_outputs += [split_output(yt_hat_train, t_train, y_train, y_scaler, x_train, train_index)]
-    test_outputs += [split_output(yt_hat_test, t_test, y_test, y_scaler, x_test, test_index)]
+    train_outputs += [split_output(yt_hat_train, t_train, y_train, y_scaler, x_scaler, x_train, train_index)]
+    test_outputs += [split_output(yt_hat_test, t_test, y_test, y_scaler, x_scaler, x_test, test_index)]
 
     K.clear_session()
 
@@ -149,7 +155,7 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
 
     dragonnet.fit(x_train, yt_train, callbacks=adam_callbacks,
                   validation_split=val_split,
-                  epochs=100,
+                  epochs=150,
                   batch_size=batch_size, verbose=verbose)
 
     # with SGD
@@ -225,6 +231,7 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
         cols = covars + ['y', 'z']
         xyt_train = pandas.DataFrame(np.concatenate([x_train, y_train, t_train], 1),columns=cols)
         X, T, y = covars, "z", "y"
+        
     else:
         covars = ['x{}'.format(i) for i in range(30)]
         cols = covars + ['y', 'z']
@@ -259,6 +266,7 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
 
 
 def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size, reps):
+    
 
     simulation_files = sorted(glob.glob("{}/*.csv".format(input_dir)))[0:reps]
 
@@ -917,7 +925,7 @@ def main():
     parser.add_argument("--num_treats", type=int, default=5)
     parser.add_argument("--dataset", type=str, default="synthetic", choices=['synthetic', 'ihdp'])
     parser.add_argument("--input_dir", type=str, default="/home/bvelasco/Hydranet/")
-    parser.add_argument("--output_dir", type=str, default="/home/bvelasco/Hydranet/Results/")
+    parser.add_argument("--output_dir", type=str, default="/home/bvelasco/Hydranet/Results/Base/")
     parser.add_argument("--main_param", type=str, choices=["data_size", 'n_confs', 'bias'])
     parser.add_argument("--device", type=str, default='GPU', choices=["GPU", "CPU"])
     parser.add_argument('--loss', type=eval, default=hydranet_loss)
@@ -928,6 +936,7 @@ def main():
     parser.add_argument("--Analyze", type=eval, default=False , choices=[True, False])
     parser.add_argument("--DR_flag", type=eval, default=False, choices=[True, False])
     parser.add_argument("--reps", type=int, default=20)
+    parser.add_argument("--trainmode", type=str, default='sequential', choices=["parallel", "sequential"])
 
     args = parser.parse_args()
     num_treats = args.num_treats
@@ -944,15 +953,16 @@ def main():
     Analyze = args.Analyze
     dr_flag = args.DR_flag
     reps = args.reps
+    trainmode = args.trainmode
 
     # System arguments
     main_param_dict = {'bias':[2,5,10,30],
                         'n_confs':[2, 5, 10, 18],
-                        'data_size':[1000, 2000, 5000, 10000] 
+                        'data_size':[5000, 10000] # 1000, 2000, 
                       }
     all_res_dict = {'bias': {2:[], 5:[], 10:[], 30:[]},
                        'n_confs': {2:[], 5:[], 10:[], 18:[]},
-                       'data_size': {1000:[], 2000:[], 5000:[], 10000:[]} 
+                       'data_size': {5000:[], 10000:[]} # 1000:[], 2000:[], 
                        }
     tf.compat.v1.enable_eager_execution()
 
@@ -990,11 +1000,18 @@ def main():
 
         with tf.device(device):
             if dataset=='synthetic':
-                for val in main_param_dict[main_param]:
-                    # Build paths
-                    input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                    output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                    run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps)
+                if trainmode=='sequential':
+                    for val in main_param_dict[main_param]:
+                        # Build paths
+                        input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                        output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
+                        run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps)
+                elif trainmode=='parallel':
+                    '''(Parallel(n_jobs=20)(delayed(run_train)(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps)
+                   for val in main_param_dict[main_param]))'''
+                    sys.exit('Parallel mode not implemented')
+                else:
+                    sys.exit('Wrong trainmode')
             elif dataset=='ihdp':
                 # Build paths
                 input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats)
@@ -1005,9 +1022,9 @@ def main():
             
     # Analyze
     if Analyze:
-        print('Analyze')
-        
-        base_input_dir = os.path.join(input_dir, 'Results/Results_NN/')
+        print('Analyze')        
+        base_output_dir = os.path.join(output_dir, 'Results_NN/')
+        base_input_dir = base_output_dir
         base_output_dir = os.path.join(output_dir, 'Results_CI/')
 
         if dataset == 'synthetic':

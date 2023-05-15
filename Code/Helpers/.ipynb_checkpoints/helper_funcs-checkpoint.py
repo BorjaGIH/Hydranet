@@ -26,7 +26,7 @@ def load_other_vars(file_path):
     return t.values.reshape(-1, 1), y, y0, y1, y2, y3, y4, mu_0, mu_1, mu_2, mu_3, mu_4
 
 
-def split_output(yt_hat, t, y, y_scaler, x, index):
+def split_output(yt_hat, t, y, y_scaler, x_scaler, x, index):
     q_t0 = y_scaler.inverse_transform(yt_hat[:, 0].reshape(-1, 1).copy())
     q_t1 = y_scaler.inverse_transform(yt_hat[:, 1].reshape(-1, 1).copy())
     q_t2 = y_scaler.inverse_transform(yt_hat[:, 2].reshape(-1, 1).copy())
@@ -45,6 +45,7 @@ def split_output(yt_hat, t, y, y_scaler, x, index):
         eps = np.zeros_like(yt_hat[:, 2])
 
     y = y_scaler.inverse_transform(y.copy())
+    x = x_scaler.inverse_transform(x.copy())
 
     return {'q_t0': q_t0, 'q_t1': q_t1, 'q_t2': q_t2, 'q_t3': q_t3, 'q_t4': q_t4, 'g': g, 't': t, 'y': y, 'x': x,'index': index, 'eps': eps}
 

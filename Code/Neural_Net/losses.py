@@ -16,7 +16,7 @@ def regression_loss(concat_true, concat_pred):
     loss2 = tf.reduce_sum(tf.cast(t_true == 2, tf.float32) * tf.square(y_true - y2_pred))
     loss3 = tf.reduce_sum(tf.cast(t_true == 3, tf.float32) * tf.square(y_true - y3_pred))
     loss4 = tf.reduce_sum(tf.cast(t_true == 4, tf.float32) * tf.square(y_true - y4_pred))
-
+    
     return loss0 + loss1 + loss2 + loss3 + loss4
 
 
