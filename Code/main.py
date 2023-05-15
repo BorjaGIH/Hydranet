@@ -958,11 +958,11 @@ def main():
     # System arguments
     main_param_dict = {'bias':[2,5,10,30],
                         'n_confs':[2, 5, 10, 18],
-                        'data_size':[5000, 10000] # 1000, 2000, 
+                        'data_size':[1000, 2000, 5000, 10000]
                       }
     all_res_dict = {'bias': {2:[], 5:[], 10:[], 30:[]},
                        'n_confs': {2:[], 5:[], 10:[], 18:[]},
-                       'data_size': {5000:[], 10000:[]} # 1000:[], 2000:[], 
+                       'data_size': {1000:[], 2000:[], 5000:[], 10000:[]} 
                        }
     tf.compat.v1.enable_eager_execution()
 
