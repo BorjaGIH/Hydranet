@@ -10,13 +10,11 @@ from Neural_Net.losses import *
 from Estimation.estimators import *
 
 
-def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size):
+def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
     verbose = 1
-    
     y_unscaled = y_unscaled.values.reshape(-1, 1)
     y_scaler = StandardScaler().fit(y_unscaled)
     y = y_scaler.transform(y_unscaled)
-    
     x_scaler = StandardScaler().fit(x_unscaled)
     x = x_scaler.transform(x_unscaled)
         
@@ -45,12 +43,12 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     # With Adam
     hydranet.compile(
         optimizer=Adam(learning_rate=1e-3),
-        loss=loss, metrics=metrics, run_eagerly=True)
+        loss=loss, metrics=metrics, run_eagerly=eager_exec)
 
     adam_callbacks = [
         TerminateOnNaN(),
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', patience=2, min_delta=0.),
+        EarlyStopping(monitor='val_loss', mode='min', patience=2, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
                           min_delta=1e-8, cooldown=0, min_lr=0)
     ]
@@ -64,12 +62,12 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     sgd_lr = 1e-5
     momentum = 0.9
     hydranet.compile(optimizer=SGD(learning_rate=sgd_lr, momentum=momentum, nesterov=True),
-                      loss=loss, metrics=metrics, run_eagerly=True)
+                      loss=loss, metrics=metrics, run_eagerly=eager_exec)
     
     sgd_callbacks = [
         TerminateOnNaN(),
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', patience=40, min_delta=0.),
+        EarlyStopping(monitor='val_loss', mode='min', patience=5, min_delta=0.001),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
                           min_delta=0., cooldown=0, min_lr=0)
     ]
@@ -102,6 +100,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     plt.title("Epsilon (T-reg = {})".format(targeted_regularization))
     plt.show() # Epsilon'''
 
+    
     yt_hat_test = hydranet.predict(x_test)
     yt_hat_train = hydranet.predict(x_train)
     
@@ -265,10 +264,9 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
     return test_outputs, train_outputs
 
 
-def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size, reps):
-    
+def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size, reps, eager_exec):    
 
-    simulation_files = sorted(glob.glob("{}/*.csv".format(input_dir)))[0:reps]
+    simulation_files = sorted(glob.glob("{}/*.csv".format(input_dir)), key=lambda x: int( x.split('.')[0].split('_')[-1] ))[reps[0]:reps[1]]
 
     for idx, simulation_file in enumerate(simulation_files):
         print(simulation_file)
@@ -286,7 +284,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
         ############# RUN THE DIFFERENT ESTIMATORS ##############
         
         # T-learner
-        test_outputs_tlearn, train_output_tlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
+        '''test_outputs_tlearn, train_output_tlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
 
         output_dir_tlearn = os.path.join(simulation_output_dir, "T_learn/baseline")
         os.makedirs(output_dir_tlearn, exist_ok=True)
@@ -295,12 +293,12 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
         for num, output in enumerate(test_outputs_tlearn):
             np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_test.npz".format(num)), **output)
         for num, output in enumerate(train_output_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)
+            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)'''
 
         # Hydranet baseline and Hydranet T-reg
         for is_targeted_regularization in [False, True]:
 
-            test_outputs_hy, train_output_hy = train_and_predict_hydra(num_treats, t, y, x, targeted_regularization=is_targeted_regularization,loss=loss, val_split=val_split, batch_size=batch_size)
+            test_outputs_hy, train_output_hy = train_and_predict_hydra(num_treats, t, y, x, targeted_regularization=is_targeted_regularization,loss=loss, val_split=val_split, batch_size=batch_size, eager_exec=eager_exec)
 
             if is_targeted_regularization:
                 output_dir_hy = os.path.join(simulation_output_dir, "Hydranet/targeted_regularization")
@@ -316,7 +314,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
 
 
         # Back to back Dragonnets
-        n_binary_estim = ['ate1_0', 'ate2_0', 'ate3_0', 'ate4_0']
+        '''n_binary_estim = ['ate1_0', 'ate2_0', 'ate3_0', 'ate4_0']
         for estimator in n_binary_estim:
             x_d = pandas.concat([x, pandas.Series(t.flatten(), name='t')], axis=1)
 
@@ -368,7 +366,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                 for num, output in enumerate(test_outputs_b2bd):
                     np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_test.npz".format(num)), **output)
                 for num, output in enumerate(train_output_b2bd):
-                    np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)
+                    np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)'''
 
                 
 def collect_results_syn(input_dir, dr_flag, num_treats, reps):
@@ -396,7 +394,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                    }
 
     estimator = ['Hydranet', 'b2bd', 'T_learn']
-    input_folders = sorted(os.listdir(input_dir))[0:reps]
+    input_folders = sorted(os.listdir(input_dir))[reps[0]:reps[1]] # check correctness after changing sorting in training
 
     # Retrieve values
     for idx, folder in enumerate(input_folders):
@@ -456,8 +454,13 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                             psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.)
 
                         result_dict[split][estim][model].append(psi)
+                        print(input_dir)
+                        print(folder)
+                        print(model)
+                        print(q_t0)
+                        print(psi)
 
-
+                '''                
                 elif estim=='b2bd':
                     for ate in ['ate1_0', 'ate2_0', 'ate3_0', 'ate4_0']:
                         for model in ['baseline', 'targeted_regularization']:
@@ -500,7 +503,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
     for i in range(1,5):
         del result_dict['train']['b2bd']['ate{}_0'.format(i)]
         del result_dict['test']['b2bd']['ate{}_0'.format(i)]
-
+    '''
 
     # Compute averages and CIs
     for estim in estimator:
@@ -515,8 +518,8 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                 naive_vec = np.asarray(result_dict[split]['naive']['baseline'])
 
                 # Sanity check
-                if (naive_vec.shape[0] == 0) or (naive_vec.shape[0]!=true_vec.shape[0]):
-                    continue
+                #if (naive_vec.shape[0] == 0) or (naive_vec.shape[0]!=true_vec.shape[0]):
+                #    continue
                     
                 naive_ci_l, naive_ci_u = bootstrap((np.nansum(np.abs((true_vec - naive_vec)), axis=1),), statistic=np.mean, method='basic', random_state=3).confidence_interval
 
@@ -543,7 +546,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                     result_dict[split][estim]['{}_pe'.format(model)] = np.nansum(np.abs(true_vec - hydra_vec))/np.nansum(np.abs(true_vec)) *100
                     result_dict[split][estim]['{}_ae_ciu'.format(model)] = Hydra_ci_u
                     result_dict[split][estim]['{}_ae_cil'.format(model)] = Hydra_ci_l
-
+            '''
             elif estim == 'b2bd':
                 for model in ['baseline', 'targeted_regularization']:
                     b2bd_vec = np.asarray(result_dict[split][estim][model])
@@ -582,7 +585,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
             
             else:
                 sys.exit('wrong estimator list')
-
+            '''
     return result_dict
 
 
@@ -622,7 +625,7 @@ def analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir, d
         labels = ['Naive', 'B2BD Baseline', 'B2BD T-reg', 'T-learner', 'Hydranet Baseline', 'Hydranet T-reg']
 
     plt.legend(handles=handles, labels= labels)
-    plt.xlabel(main_param)
+    plt.xlabel(main_param.replace('_',' ').capitalize())
     plt.ylabel('Error')
     fig.savefig(os.path.join(output_dir, main_param + '_ae' + '_in-sample.pdf'))
 
@@ -641,7 +644,7 @@ def analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir, d
     ax.fill_between(df_test['naive'].index, df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae_cil']),df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae_ciu']), alpha=.5)
 
     plt.legend(handles=handles, labels=labels)
-    plt.xlabel(main_param)
+    plt.xlabel(main_param.replace('_',' ').capitalize())
     plt.ylabel('Error')
     fig.savefig(os.path.join(output_dir, main_param + '_ae' + '_out-sample.pdf'))
 
@@ -661,7 +664,7 @@ def analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir, d
     #ax.fill_between(df_train['naive'].index, df_train['Hydranet'].apply(lambda x: x['targeted_regularization_ae_cil']),df_train['Hydranet'].apply(lambda x: x['targeted_regularization_ae_ciu']), alpha=.5)
 
     plt.legend(handles=handles, labels=labels)
-    plt.xlabel(main_param)
+    plt.xlabel(main_param.replace('_',' ').capitalize())
     plt.ylabel('Percentual Error')
     fig.savefig(os.path.join(output_dir, main_param + '_pe' + '_in-sample.pdf'))
 
@@ -680,7 +683,7 @@ def analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir, d
     #ax.fill_between(df_test['naive'].index, df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae_cil']),df_test['Hydranet'].apply(lambda x: x['targeted_regularization_ae_ciu']), alpha=.5)
 
     plt.legend(handles=handles, labels=labels)
-    plt.xlabel(main_param)
+    plt.xlabel(main_param.replace('_',' ').capitalize())
     plt.ylabel('Percentual Error')
     fig.savefig(os.path.join(output_dir, main_param + '_pe' + '_out-sample.pdf'))
 
@@ -925,8 +928,9 @@ def main():
     parser.add_argument("--num_treats", type=int, default=5)
     parser.add_argument("--dataset", type=str, default="synthetic", choices=['synthetic', 'ihdp'])
     parser.add_argument("--input_dir", type=str, default="/home/bvelasco/Hydranet/")
-    parser.add_argument("--output_dir", type=str, default="/home/bvelasco/Hydranet/Results/Base/")
+    parser.add_argument("--output_dir", type=str, default="/home/bvelasco/Hydranet/Results/Stable/")
     parser.add_argument("--main_param", type=str, choices=["data_size", 'n_confs', 'bias'])
+    parser.add_argument("--main_param_size", type=int, default=None)
     parser.add_argument("--device", type=str, default='GPU', choices=["GPU", "CPU"])
     parser.add_argument('--loss', type=eval, default=hydranet_loss)
     parser.add_argument('--loss_dr', type=eval, default=dragonnet_loss_binarycross_dr)
@@ -935,13 +939,16 @@ def main():
     parser.add_argument("--Train", type=eval, default=False, choices= [True, False])
     parser.add_argument("--Analyze", type=eval, default=False , choices=[True, False])
     parser.add_argument("--DR_flag", type=eval, default=False, choices=[True, False])
-    parser.add_argument("--reps", type=int, default=20)
+    parser.add_argument("--reps_start", type=int, default=0)
+    parser.add_argument("--reps_end", type=int, default=20)
     parser.add_argument("--trainmode", type=str, default='sequential', choices=["parallel", "sequential"])
+    parser.add_argument("--eager_exec", type=bool, default=False)
 
     args = parser.parse_args()
     num_treats = args.num_treats
     dataset = args.dataset
     main_param = args.main_param
+    main_param_size = args.main_param_size
     device = args.device
     input_dir = args.input_dir
     output_dir = args.output_dir
@@ -952,10 +959,11 @@ def main():
     Train = args.Train
     Analyze = args.Analyze
     dr_flag = args.DR_flag
-    reps = args.reps
+    reps = [args.reps_start, args.reps_end]
     trainmode = args.trainmode
+    eager_exec = args.eager_exec
 
-    # System arguments
+    # Result dicts
     main_param_dict = {'bias':[2,5,10,30],
                         'n_confs':[2, 5, 10, 18],
                         'data_size':[1000, 2000, 5000, 10000]
@@ -964,12 +972,32 @@ def main():
                        'n_confs': {2:[], 5:[], 10:[], 18:[]},
                        'data_size': {1000:[], 2000:[], 5000:[], 10000:[]} 
                        }
-    tf.compat.v1.enable_eager_execution()
+    
+    # System args
+    # TODO Remove unnecesary lines
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+    deprecation._PRINT_DEPRECATION_WARNINGS = False 
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR) 
+    tf.get_logger().setLevel(logging.ERROR) 
+    tf.autograph.set_verbosity(1) 
 
+    
+    # Eager execution
+    if eager_exec:
+        tf.compat.v1.enable_eager_execution()
+    else:
+        tf.compat.v1.disable_eager_execution()
+        
     # Set seeds
     random.seed(1)
     np.random.seed(1)
-
+    
+    # Iterate along main param values or use only one value
+    if main_param_size==None:
+        main_param_iterator = main_param_dict[main_param]
+    else:
+        main_param_iterator = [main_param_dict[main_param][main_param_dict[main_param].index(main_param_size)]]
+    
     # Train
     if Train:
         print('Train')
@@ -997,15 +1025,18 @@ def main():
 
         base_input_dir = os.path.join(input_dir, 'Input_data/')
         base_output_dir = os.path.join(output_dir, 'Results_NN/')
+        
 
         with tf.device(device):
+            # Set seeds
+            tf.compat.v1.set_random_seed(1)
             if dataset=='synthetic':
                 if trainmode=='sequential':
-                    for val in main_param_dict[main_param]:
+                    for val in main_param_iterator:
                         # Build paths
                         input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
                         output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                        run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps)
+                        run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps, eager_exec=eager_exec)
                 elif trainmode=='parallel':
                     '''(Parallel(n_jobs=20)(delayed(run_train)(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps)
                    for val in main_param_dict[main_param]))'''
@@ -1016,7 +1047,7 @@ def main():
                 # Build paths
                 input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats)
                 output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats)
-                run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size)
+                run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps, eager_exec=eager_exec)
     else:
         print('Do not train')
             
@@ -1028,12 +1059,12 @@ def main():
         base_output_dir = os.path.join(output_dir, 'Results_CI/')
 
         if dataset == 'synthetic':
-            for val in main_param_dict[main_param]:
+            for val in main_param_iterator:
                 # Build paths
                 input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
                 all_res_dict[main_param][val] = collect_results_syn(input_dir_, dr_flag, num_treats, reps=reps)
             output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param)
-            analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir_, dr_flag)
+            #analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir_, dr_flag)
 
         elif dataset == 'ihdp':
             # Build paths

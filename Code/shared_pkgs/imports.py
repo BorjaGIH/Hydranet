@@ -3,11 +3,13 @@
 #import sys
 #!{sys.executable} -m pip install scipy==1.7.1
 
+import os
+
 import pandas
 import numpy as np
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
+import logging
+import tensorflow.python.util.deprecation as deprecation
 import glob as glob
 import random
 import keras.backend as K
@@ -35,5 +37,3 @@ from keras import regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau, TerminateOnNaN
 from lightgbm import LGBMRegressor
 from IPython.display import clear_output
-
-
