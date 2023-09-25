@@ -2,7 +2,7 @@ from shared_pkgs.imports import *
 
 def load_and_format_covariates(file_path, dataset):
 
-    data = pandas.read_csv(file_path, delimiter=',')
+    data = pd.read_csv(file_path, delimiter=',')
 
     if dataset=='ihdp':
         binfeats = ["bw","b.head","preterm","birth.o","nnhealth","momage"]
@@ -18,7 +18,7 @@ def load_and_format_covariates(file_path, dataset):
 
 def load_other_vars(file_path):
 
-    data = pandas.read_csv(file_path, delimiter=',')
+    data = pd.read_csv(file_path, delimiter=',')
 
     t, y, y0, y1, y2, y3, y4 = data['z'], data['y'], data['y_0'], data['y_1'],  data['y_2'], data['y_3'], data['y_4'],
     mu_0, mu_1, mu_2, mu_3, mu_4 =  data['mu_0'], data['mu_1'], data['mu_2'], data['mu_3'], data['mu_4']
@@ -240,27 +240,27 @@ class SaveBestModel(tf.keras.callbacks.Callback):
 
 def generate_result_table_ihdp(file, train_table, test_table, err_type='ae'):
     # Generate table for latex
-    index_ = pandas.Index(['naive', 'b2bd base', 'T-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
+    index_ = pd.Index(['naive', 'b2bd base', 'M-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
 
-    result_table_tr = pandas.concat([
-                      pandas.concat([train_table[1:].apply(lambda x: x['baseline_ae']),\
+    result_table_tr = pd.concat([
+                      pd.concat([train_table[1:].apply(lambda x: x['baseline_ae']),\
                                      train_table[1:].apply(lambda x: (x['baseline_ae_ciu'] - x['baseline_ae_cil']) / 2)],axis=1, keys=['0','1']),\
-                      pandas.concat([train_table[[2,4]].apply(lambda x: x['targeted_regularization_ae']),\
+                      pd.concat([train_table[[2,4]].apply(lambda x: x['targeted_regularization_ae']),\
                                      train_table[[2,4]].apply(lambda x: (x['targeted_regularization_ae_ciu'] - x['targeted_regularization_ae_cil']) / 2)],axis=1,keys=['0','1'])\
                                     ],axis=0)
     result_table_tr = np.around(result_table_tr.set_index(index_, drop=True).copy(), 2)
     result_table_tr = result_table_tr[['0','1']].astype(str).agg(' \u00B1 '.join, axis=1)
 
-    result_table_te = pandas.concat([
-                    pandas.concat([test_table[1:].apply(lambda x: x['baseline_ae']), \
+    result_table_te = pd.concat([
+                    pd.concat([test_table[1:].apply(lambda x: x['baseline_ae']), \
                                     test_table[1:].apply(lambda x: (x['baseline_ae_ciu'] - x['baseline_ae_cil']) / 2)], axis=1,keys=['0','1']), \
-                    pandas.concat([test_table[[2, 4]].apply(lambda x: x['targeted_regularization_ae']), \
+                    pd.concat([test_table[[2, 4]].apply(lambda x: x['targeted_regularization_ae']), \
                                     test_table[[2, 4]].apply(lambda x: (x['targeted_regularization_ae_ciu'] - x['targeted_regularization_ae_cil']) / 2)],axis=1, keys=['0','1']) \
                                     ], axis=0)
     result_table_te = np.around(result_table_te.set_index(index_, drop=True).copy(), 2)
     result_table_te = result_table_te[['0','1']].astype(str).agg(' \u00B1 '.join, axis=1)
 
-    latex_table = pandas.concat([result_table_tr, result_table_te], axis=1, keys=['Out-Sample', 'In-Sample'])
+    latex_table = pd.concat([result_table_tr, result_table_te], axis=1, keys=['Out-Sample', 'In-Sample'])
     with open(file, 'w') as tolatex_file:
         tolatex_file.write(latex_table.to_latex())
     return None
@@ -269,16 +269,16 @@ def generate_result_table_ihdp(file, train_table, test_table, err_type='ae'):
 
 def generate_result_table_syn(file, train_table, test_table, main_param_dict, main_param):
     # Generate table for latex
-    index_ = pandas.Index(['naive', 'b2bd base', 'T-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
+    index_ = pd.Index(['naive', 'b2bd base', 'M-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
 
     # In sample
-    result_table_tr = pandas.DataFrame()
+    result_table_tr = pd.DataFrame()
     for val in main_param_dict[main_param][1:]:
-        result_table_tr = pandas.concat([result_table_tr,
-                          pandas.concat([
-                                        pandas.concat([train_table.loc[val][1:].apply(lambda x: x['baseline_ae']), \
+        result_table_tr = pd.concat([result_table_tr,
+                          pd.concat([
+                                        pd.concat([train_table.loc[val][1:].apply(lambda x: x['baseline_ae']), \
                                                        train_table.loc[val][1:].apply(lambda x: (x['baseline_ae_ciu'] - x['baseline_ae_cil']) / 2)], axis=1, keys=['0', '1']), \
-                                        pandas.concat([train_table.loc[val][[2, 4]].apply(lambda x: x['targeted_regularization_ae']), \
+                                        pd.concat([train_table.loc[val][[2, 4]].apply(lambda x: x['targeted_regularization_ae']), \
                                                        train_table.loc[val][[2, 4]].apply(lambda x: (x['targeted_regularization_ae_ciu'] - x['targeted_regularization_ae_cil']) / 2)], axis=1, keys=['0', '1']) \
                                         ], axis=0)
                                         ], axis=1)
@@ -286,7 +286,7 @@ def generate_result_table_syn(file, train_table, test_table, main_param_dict, ma
     result_table_tr = np.around(result_table_tr,2)
     result_table_tr.columns = [i for i in range(0, len(result_table_tr.columns))]
 
-    result_table_tr2 = pandas.DataFrame()
+    result_table_tr2 = pd.DataFrame()
     for i in range(1, len(result_table_tr.columns), 2):
         col1 = result_table_tr.columns[i - 1]
         col2 = result_table_tr.columns[i]
@@ -294,13 +294,13 @@ def generate_result_table_syn(file, train_table, test_table, main_param_dict, ma
         result_table_tr2[new_col] = result_table_tr[[col1, col2]].astype(str).agg(' \u00B1 '.join, axis=1)
 
     # Out sample
-    result_table_te = pandas.DataFrame()
+    result_table_te = pd.DataFrame()
     for val in main_param_dict[main_param][1:]:
-        result_table_te = pandas.concat([result_table_te,
-                                         pandas.concat([
-                                             pandas.concat([test_table.loc[val][1:].apply(lambda x: x['baseline_ae']), \
+        result_table_te = pd.concat([result_table_te,
+                                         pd.concat([
+                                             pd.concat([test_table.loc[val][1:].apply(lambda x: x['baseline_ae']), \
                                                             test_table.loc[val][1:].apply(lambda x: (x['baseline_ae_ciu'] - x['baseline_ae_cil']) / 2)], axis=1, keys=['0', '1']), \
-                                             pandas.concat([train_table.loc[val][[2, 4]].apply(lambda x: x['targeted_regularization_ae']), \
+                                             pd.concat([train_table.loc[val][[2, 4]].apply(lambda x: x['targeted_regularization_ae']), \
                                                             test_table.loc[val][[2, 4]].apply(lambda x: (x['targeted_regularization_ae_ciu'] - x['targeted_regularization_ae_cil']) / 2)], axis=1, keys=['0', '1']) \
                                              ], axis=0)
                                          ], axis=1)
@@ -308,7 +308,7 @@ def generate_result_table_syn(file, train_table, test_table, main_param_dict, ma
     result_table_te = np.around(result_table_te, 2)
     result_table_te.columns = [i for i in range(0, len(result_table_te.columns))]
 
-    result_table_te2 = pandas.DataFrame()
+    result_table_te2 = pd.DataFrame()
     for i in range(1, len(result_table_te.columns), 2):
         col1 = result_table_te.columns[i - 1]
         col2 = result_table_te.columns[i]
@@ -316,7 +316,7 @@ def generate_result_table_syn(file, train_table, test_table, main_param_dict, ma
         result_table_te2[new_col] = result_table_te[[col1, col2]].astype(str).agg(' \u00B1 '.join, axis=1)
 
     # Concatenate both
-    result_table_all = pandas.concat([result_table_tr2, result_table_te2], axis=1, keys=['Out-Sample', 'In-Sample'])
+    result_table_all = pd.concat([result_table_tr2, result_table_te2], axis=1, keys=['Out-Sample', 'In-Sample'])
     result_table_all = result_table_all.swaplevel(axis=1)
     result_table_all = result_table_all.sort_index(axis=1)
 
@@ -329,3 +329,19 @@ def generate_result_table_syn(file, train_table, test_table, main_param_dict, ma
         tolatex_file.write(result_table_all.to_latex())
 
     return None
+
+
+def compute_pseudoobs_xlearner(x, y, t, ms, tt):
+    ind_i = (t == tt)
+
+    term0 = ind_i.flatten()*(y.flatten() - ms[0].predict(x))
+
+    term1 = (t==0).flatten()*(ms[tt].predict(x) - y.flatten()) + (t==1).flatten()*(ms[tt].predict(x) - y.flatten()) + \
+            (t==2).flatten()*(ms[tt].predict(x) - y.flatten()) + (t==3).flatten()*(ms[tt].predict(x) - y.flatten()) + (t==4).flatten()*(ms[tt].predict(x) - y.flatten())
+
+    term2 = (t==1).flatten()*(ms[1].predict(x) - ms[0].predict(x)).flatten() + (t==2).flatten()*(ms[2].predict(x) - ms[0].predict(x)).flatten() + \
+            (t==3).flatten()*(ms[3].predict(x) - ms[0].predict(x)).flatten() + (t==4).flatten()*(ms[4].predict(x) - ms[0].predict(x)).flatten()
+
+    z = (term0 + term1 + term2).reshape(-1,1)
+
+    return z

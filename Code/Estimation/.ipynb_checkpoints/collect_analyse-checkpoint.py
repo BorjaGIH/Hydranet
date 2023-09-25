@@ -26,10 +26,12 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                    }
 
     estimator = ['Hydranet', 'b2bd', 'T_learn']
-    input_folders = sorted(os.listdir(input_dir))[reps[0]:reps[1]] # OK
+    input_folders = sorted(os.listdir(input_dir), key=lambda x: int(x))[reps[0]:reps[1]] # OK
 
     # Retrieve values
     for idx, folder in enumerate(input_folders):
+        idx = int(folder)
+        
         # Repetition level (0, 1, 2...)
         # True data
         truth_dat_path = os.path.join(input_dir, folder, 'simulation_outputs.npz')
@@ -376,10 +378,12 @@ def collect_results_ihdp(input_dir):
                    }
 
     estimator = ['Hydranet', 'b2bd', 'T_learn']
-    input_folders = sorted(os.listdir(input_dir))
+    input_folders = sorted(os.listdir(input_dir), key=lambda x: int(x)) # OK
 
     # Retrieve values
     for idx, folder in enumerate(input_folders):
+        idx = int(folder)
+        
         # Repetition level (0, 1, 2...)
         # True data
         truth_dat_path = os.path.join(input_dir, folder, 'simulation_outputs.npz')
@@ -421,6 +425,8 @@ def collect_results_ihdp(input_dir):
                         psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.)
 
                         result_dict[split][estim][model].append(psi)
+                        #print(truth_dat_path)
+                        #print(psi)
 
 
                 elif estim == 'b2bd':

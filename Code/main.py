@@ -1,6 +1,5 @@
 import os
 import sys
-import pandas as pd
 from shared_pkgs.imports import *
 from Estimation.collect_analyse import *
 from Training.run_train_pred import *
@@ -14,7 +13,7 @@ def main():
     parser.add_argument("--dataset", type=str, default="synthetic", choices=['synthetic', 'ihdp'])
     parser.add_argument("--input_dir", type=str, default="/home/bvelasco/Hydranet/")
     parser.add_argument("--output_dir", type=str, default="/home/bvelasco/Hydranet/Results/Stable/")
-    parser.add_argument("--main_param", type=str, choices=["data_size", 'n_confs', 'bias'])
+    parser.add_argument("--main_param", type=str, choices=["data_size", 'n_confs', 'bias', 'positivity'])
     parser.add_argument("--main_param_size", type=int, default=None)
     parser.add_argument("--device", type=str, default='GPU', choices=["GPU", "CPU"])
     parser.add_argument('--loss', type=eval, default=hydranet_loss)
@@ -28,6 +27,7 @@ def main():
     parser.add_argument("--reps_end", type=int, default=20)
     parser.add_argument("--trainmode", type=str, default='sequential', choices=["parallel", "sequential"])
     parser.add_argument("--eager_exec", type=bool, default=False)
+    parser.add_argument("--meta_learner", type=str, default='T', choices=['T','X'])
 
     args = parser.parse_args()
     num_treats = args.num_treats
@@ -47,16 +47,20 @@ def main():
     reps = [args.reps_start, args.reps_end]
     trainmode = args.trainmode
     eager_exec = args.eager_exec
+    meta_learn = args.meta_learner
 
     # Result dicts
     main_param_dict = {'bias':[2,5,10,30],
-                        'n_confs':[2, 5, 10, 18],
-                        'data_size':[1000, 2000, 5000, 10000]
+                       'positivity':[60, 70, 80, 95],
+                       'n_confs':[2, 5, 10, 18],
+                       'data_size':[1000, 2000, 5000, 10000]
                       }
+    
     all_res_dict = {'bias': {2:[], 5:[], 10:[], 30:[]},
-                       'n_confs': {2:[], 5:[], 10:[], 18:[]},
-                       'data_size': {1000:[], 2000:[], 5000:[], 10000:[]} 
-                       }
+                    'positivity': {60:[], 70:[], 80:[], 95:[]},
+                    'n_confs': {2:[], 5:[], 10:[], 18:[]},
+                    'data_size': {1000:[], 2000:[], 5000:[], 10000:[]} 
+                   }
     
     # System args
     # TODO Remove unnecesary lines
@@ -65,7 +69,7 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR) 
     tf.get_logger().setLevel(logging.ERROR) 
     tf.autograph.set_verbosity(1) 
-
+    warnings.simplefilter(action='ignore', category=FutureWarning)
     
     # Eager execution
     if eager_exec:
@@ -77,11 +81,6 @@ def main():
     random.seed(1)
     np.random.seed(1)
     
-    # Iterate along main param values or use only one value
-    if main_param_size==None:
-        main_param_iterator = main_param_dict[main_param]
-    else:
-        main_param_iterator = [main_param_dict[main_param][main_param_dict[main_param].index(main_param_size)]]
     
     # Train
     if Train:
@@ -116,12 +115,19 @@ def main():
             # Set seeds
             tf.compat.v1.set_random_seed(1)
             if dataset=='synthetic':
+                
+                # Iterate along main param values or use only one value
+                if main_param_size==None:
+                    main_param_iterator = main_param_dict[main_param]
+                else:
+                    main_param_iterator = [main_param_dict[main_param][main_param_dict[main_param].index(main_param_size)]]
+                    
                 if trainmode=='sequential':
                     for val in main_param_iterator:
                         # Build paths
                         input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
                         output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)
-                        run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps, eager_exec=eager_exec)
+                        run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps, eager_exec=eager_exec, meta_learn=meta_learn)
                 elif trainmode=='parallel':
                     '''(Parallel(n_jobs=20)(delayed(run_train)(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps)
                    for val in main_param_dict[main_param]))'''
@@ -132,7 +138,7 @@ def main():
                 # Build paths
                 input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats)
                 output_dir_ = base_output_dir + dataset + '/{}_treats/'.format(num_treats)
-                run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps, eager_exec=eager_exec)
+                run_train(input_dir=input_dir_, output_dir=output_dir_, dataset=dataset, num_treats=num_treats, loss=loss, loss_dr=loss_dr, val_split=val_split, batch_size=batch_size, reps=reps, eager_exec=eager_exec, meta_learn=meta_learn)
     else:
         print('Do not train')
             
@@ -144,6 +150,13 @@ def main():
         base_output_dir = os.path.join(output_dir, 'Results_CI/')
 
         if dataset == 'synthetic':
+            
+            # Iterate along main param values or use only one value
+            if main_param_size==None:
+                main_param_iterator = main_param_dict[main_param]
+            else:
+                main_param_iterator = [main_param_dict[main_param][main_param_dict[main_param].index(main_param_size)]]
+                    
             for val in main_param_iterator:
                 # Build paths
                 input_dir_ = base_input_dir + dataset + '/{}_treats/'.format(num_treats) + str(main_param) + '/{}/'.format(val)

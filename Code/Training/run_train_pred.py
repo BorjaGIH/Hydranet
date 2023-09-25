@@ -11,7 +11,8 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     y_scaler = StandardScaler().fit(y_unscaled)
     y = y_scaler.transform(y_unscaled)
     x_scaler = StandardScaler().fit(x_unscaled)
-    x = x_scaler.transform(x_unscaled)
+    #x = x_scaler.transform(x_unscaled) # when scaled
+    x = x_unscaled # when unscaled
         
     train_outputs = []
     test_outputs = []
@@ -28,8 +29,8 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     # Get train and test indexes
     train_index, test_index = train_test_split(np.arange(x.shape[0]), test_size=val_split, random_state=1, shuffle=True)
 
-    x_train, x_test = x[train_index,:], x[test_index,:] # when scaled
-    #x_train, x_test = x.iloc[train_index], x.iloc[test_index] # when unscaled
+    #x_train, x_test = x[train_index,:], x[test_index,:] # when scaled
+    x_train, x_test = x.iloc[train_index], x.iloc[test_index] # when unscaled
     y_train, y_test = y[train_index], y[test_index]
     t_train, t_test = t[train_index], t[test_index]
 
@@ -71,7 +72,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
         save_best_model_sgd,
         TerminateOnNaN(),
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', mode='min', patience=5, min_delta=0.),
+        EarlyStopping(monitor='val_loss', mode='min', patience=40, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=10, verbose=verbose, mode='auto',min_delta=0., cooldown=0, min_lr=0)
         ]
     
@@ -233,13 +234,13 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
                   "mom.scoll", "cig", "first", "booze", "drugs", "work.dur", "prenatal", "ark", "ein", "har", "mia","pen",
                   "tex", "was", 'momwhite', 'momblack', 'momhisp']
         cols = covars + ['y', 'z']
-        xyt_train = pandas.DataFrame(np.concatenate([x_train, y_train, t_train], 1),columns=cols)
+        xyt_train = pd.DataFrame(np.concatenate([x_train, y_train, t_train], 1),columns=cols)
         X, T, y = covars, "z", "y"
         
     else:
         covars = ['x{}'.format(i) for i in range(30)]
         cols = covars + ['y', 'z']
-        xyt_train = pandas.DataFrame(np.concatenate([x_train, y_train, t_train], 1), columns=cols)
+        xyt_train = pd.DataFrame(np.concatenate([x_train, y_train, t_train], 1), columns=cols)
         X, T, y = covars, "z", "y"
 
     m0 = LGBMRegressor(max_depth=2, min_child_samples=60)
@@ -269,13 +270,92 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
     return test_outputs, train_outputs
 
 
-def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size, reps, eager_exec):    
+def train_and_predict_xlearn(dataset, t, y_unscaled, x, val_split):
+    print('X-learn')
+
+    y_unscaled = y_unscaled.values.reshape(-1, 1)
+    y_scaler = StandardScaler().fit(y_unscaled)
+    y = y_scaler.transform(y_unscaled)
+    x_scaler = StandardScaler().fit(x)
+    #x = x_scaler.transform(x) # when scaled
+    
+    train_outputs = []
+    test_outputs = []
+
+    train_index, test_index = train_test_split(np.arange(x.shape[0]), test_size=val_split, random_state=1, shuffle=True)
+
+    #x_train, x_test = x[train_index,:], x[test_index,:] # when scaled
+    x_train, x_test = x.iloc[train_index], x.iloc[test_index] # when unscaled
+  
+    y_train, y_test = y[train_index], y[test_index]
+    t_train, t_test = t[train_index], t[test_index]
+
+    if dataset == 'ihdp':
+        covars = ["bw", "b.head", "preterm", "birth.o", "nnhealth", "momage", "sex", "twin", "b.marr", "mom.lths",
+                  "mom.hs",
+                  "mom.scoll", "cig", "first", "booze", "drugs", "work.dur", "prenatal", "ark", "ein", "har", "mia",
+                  "pen",
+                  "tex", "was", 'momwhite', 'momblack', 'momhisp']
+        cols = covars + ['y', 'z']
+        xyt_train = pd.DataFrame(np.concatenate([x_train, y_train, t_train], 1), columns=cols)
+        X, T, y = covars, "z", "y"
+
+    else:
+        covars = ['x{}'.format(i) for i in range(30)]
+        cols = covars + ['y', 'z']
+        xyt_train = pd.DataFrame(np.concatenate([x_train, y_train, t_train], 1), columns=cols)
+        X, T, y = covars, "z", "y"
+
+    # First stage
+    m0 = LGBMRegressor(max_depth=2, min_child_samples=60)
+    m1 = LGBMRegressor(max_depth=2, min_child_samples=60)
+    m2 = LGBMRegressor(max_depth=2, min_child_samples=60)
+    m3 = LGBMRegressor(max_depth=2, min_child_samples=60)
+    m4 = LGBMRegressor(max_depth=2, min_child_samples=60)
+
+    m0.fit(xyt_train.query(f"{T}==0")[X], xyt_train.query(f"{T}==0")[y])
+    m1.fit(xyt_train.query(f"{T}==1")[X], xyt_train.query(f"{T}==1")[y])
+    m2.fit(xyt_train.query(f"{T}==2")[X], xyt_train.query(f"{T}==2")[y])
+    m3.fit(xyt_train.query(f"{T}==3")[X], xyt_train.query(f"{T}==3")[y])
+    m4.fit(xyt_train.query(f"{T}==4")[X], xyt_train.query(f"{T}==4")[y])
+
+    # From the paper: Comparison of meta-learners for estimating multi-valued treatment heterogeneous effects
+    # Naoufal Acharki et al.
+
+    ms = [m0, m1, m2, m3, m4]
+
+    Z0_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=0)
+    Z1_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=1)
+    Z2_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=2)
+    Z3_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=3)
+    Z4_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=4)
+
+    Z0_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=0)
+    Z1_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=1)
+    Z2_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=2)
+    Z3_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=3)
+    Z4_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=4)
+
+
+    yt_hat_test = np.concatenate([Z0_test,Z1_test,Z2_test,Z3_test,Z4_test], axis=1)
+
+    yt_hat_train = np.concatenate([Z0_train,Z1_train,Z2_train,Z3_train,Z4_train], axis=1)
+
+    train_outputs += [split_output_t(yt_hat_train, t_train, y_train, y_scaler, x_train, train_index)]
+
+    test_outputs += [split_output_t(yt_hat_test, t_test, y_test, y_scaler, x_test, test_index)]
+
+    return test_outputs, train_outputs
+
+
+def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size, reps, eager_exec, meta_learn):
     #tf.debugging.enable_check_numerics()
 
     simulation_files = sorted(glob.glob("{}/*.csv".format(input_dir)), key=lambda x: int( x.split('.')[0].split('_')[-1] ))[reps[0]:reps[1]]
 
-    for idx, simulation_file in enumerate(simulation_files):
+    for _, simulation_file in enumerate(simulation_files):
         print(simulation_file)
+        idx=simulation_file.split('.')[0].split('_')[-1] # Assuming the simulation file has the shape .../dir1/dir2/file_<number>.txt
 
         simulation_output_dir = os.path.join(output_dir, str(idx))
 
@@ -289,17 +369,22 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
         
         ############# RUN THE DIFFERENT ESTIMATORS ##############
         
-        ################# T-learner
-        test_outputs_tlearn, train_output_tlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
+        ################# Meta-learner
+        if meta_learn=='T':
+            test_outputs_mlearn, train_output_mlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
+        elif meta_learn=='X':
+            test_outputs_mlearn, train_output_mlearn = train_and_predict_xlearn(dataset, t, y, x, val_split=val_split)
+        else:
+            sys.exit('Wrong meta-learner selection')
 
-        output_dir_tlearn = os.path.join(simulation_output_dir, "T_learn/baseline")
-        os.makedirs(output_dir_tlearn, exist_ok=True)
+        output_dir_mlearn = os.path.join(simulation_output_dir, "M_learn/baseline")
+        os.makedirs(output_dir_mlearn, exist_ok=True)
 
         # Save outputs for each split
-        for num, output in enumerate(test_outputs_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_test.npz".format(num)), **output)
-        for num, output in enumerate(train_output_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)
+        for num, output in enumerate(test_outputs_mlearn):
+            np.savez_compressed(os.path.join(output_dir_mlearn, "{}_replication_test.npz".format(num)), **output)
+        for num, output in enumerate(train_output_mlearn):
+            np.savez_compressed(os.path.join(output_dir_mlearn, "{}_replication_train.npz".format(num)), **output)
 
         ################# Hydranet baseline and Hydranet T-reg
         for is_targeted_regularization in [False, True]:
@@ -322,7 +407,7 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
         ################# Back to back Dragonnets
         n_binary_estim = ['ate1_0', 'ate2_0', 'ate3_0', 'ate4_0']
         for estimator in n_binary_estim:
-            x_d = pandas.concat([x, pandas.Series(t.flatten(), name='t')], axis=1)
+            x_d = pd.concat([x, pd.Series(t.flatten(), name='t')], axis=1)
 
             # Keep only the data for the current ate computation
             t_i = n_binary_estim.index(estimator) + 1

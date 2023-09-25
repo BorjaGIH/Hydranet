@@ -60,11 +60,11 @@ def analyse_generated_data(temp_all, path):
 
         ### Individual and total bias
         
-        sumfile.write('Bias 0: {}\n'.format(abs((temp_all['y_0'].mean()) - (temp_all.y[temp_all.z == 0].mean()))))
-        sumfile.write('Bias 0: {}\n'.format(abs((temp_all['y_1'].mean()) - (temp_all.y[temp_all.z == 1].mean()))))
-        sumfile.write('Bias 2: {}\n'.format(abs((temp_all['y_2'].mean()) - (temp_all.y[temp_all.z == 2].mean()))))
-        sumfile.write('Bias 3: {}\n'.format(abs((temp_all['y_3'].mean()) - (temp_all.y[temp_all.z == 3].mean()))))
-        sumfile.write('Bias 4: {}\n'.format(abs((temp_all['y_4'].mean()) - (temp_all.y[temp_all.z == 4].mean()))))
+        sumfile.write('results_bias 0: {}\n'.format(abs((temp_all['y_0'].mean()) - (temp_all.y[temp_all.z == 0].mean()))))
+        sumfile.write('results_bias 0: {}\n'.format(abs((temp_all['y_1'].mean()) - (temp_all.y[temp_all.z == 1].mean()))))
+        sumfile.write('results_bias 2: {}\n'.format(abs((temp_all['y_2'].mean()) - (temp_all.y[temp_all.z == 2].mean()))))
+        sumfile.write('results_bias 3: {}\n'.format(abs((temp_all['y_3'].mean()) - (temp_all.y[temp_all.z == 3].mean()))))
+        sumfile.write('results_bias 4: {}\n'.format(abs((temp_all['y_4'].mean()) - (temp_all.y[temp_all.z == 4].mean()))))
 
         b0 = abs((temp_all.y[temp_all.z == 0].mean()) - (temp_all.y_0).mean()) / abs(temp_all.y_0).mean() * 100
         b1 = abs((temp_all.y[temp_all.z == 1].mean()) - (temp_all.y_1).mean()) / abs(temp_all.y_1).mean() * 100
@@ -73,11 +73,11 @@ def analyse_generated_data(temp_all, path):
         b4 = abs((temp_all.y[temp_all.z == 4].mean()) - (temp_all.y_4).mean()) / abs(temp_all.y_4).mean() * 100
         sumfile.write('*******\n')
 
-        sumfile.write('Bias 0 perc: {}\n'.format(b0))
-        sumfile.write('Bias 1 perc: {}\n'.format(b1))
-        sumfile.write('Bias 2 perc: {}\n'.format(b2))
-        sumfile.write('Bias 3 perc: {}\n'.format(b3))
-        sumfile.write('Bias 3 perc: {}\n'.format(b4))
+        sumfile.write('results_bias 0 perc: {}\n'.format(b0))
+        sumfile.write('results_bias 1 perc: {}\n'.format(b1))
+        sumfile.write('results_bias 2 perc: {}\n'.format(b2))
+        sumfile.write('results_bias 3 perc: {}\n'.format(b3))
+        sumfile.write('results_bias 3 perc: {}\n'.format(b4))
         sumfile.write('total: {}\n'.format(b0 + b1 + b2 + b3 + b4))
         sumfile.write('*******\n')
 
@@ -192,16 +192,18 @@ if dataset=='ihdp':
     print('Done ihdp')
 
 elif dataset=='synthetic':
-    var_dict = {'bias':{'bias':[2, 5, 10, 30], 'data_size':2000, 'n_confs':2},
-                'n_confs':{'bias':20, 'data_size':2000, 'n_confs':[2, 5, 10, 18]},
-                'data_size':{'bias':20, 'data_size':[1000, 2000, 5000, 10000], 'n_confs':2}
+    var_dict = {'bias':{'bias':[2, 5, 10, 30], 'positivity': 80, 'data_size':2000, 'n_confs':2},
+                'positivity': {'bias':20, 'positivity': [60, 70, 80, 95], 'data_size':2000, 'n_confs':2},
+                'n_confs':{'bias':20, 'positivity': 80,'data_size':2000, 'n_confs':[2, 5, 10, 18]},
+                'data_size':{'bias':20, 'positivity': 80,'data_size':[1000, 2000, 5000, 10000], 'n_confs':2}
                 }
 
-    for main_param in ['bias','n_confs','data_size']:
+    for main_param in ['bias','n_confs','data_size', 'positivity']:
 
         bias_vals = var_dict[main_param]['bias']
         n_confs_vals = var_dict[main_param]['n_confs']
         data_size_vals = var_dict[main_param]['data_size']
+        pos_vals = var_dict[main_param]['positivity']
 
         for i in range(len(var_dict[main_param][main_param])):
 
@@ -210,16 +212,27 @@ elif dataset=='synthetic':
 
             if main_param=='bias':
                 bias=bias_vals[i]
+                pos = pos_vals
                 data_size=data_size_vals
                 n_confs=n_confs_vals
+            elif main_param=='positivity':
+                bias = bias_vals
+                pos = pos_vals[i]
+                data_size=data_size_vals
+                n_confs = n_confs_vals
             elif main_param=='n_confs':
                 bias = bias_vals
+                pos = pos_vals
                 data_size = data_size_vals
                 n_confs=n_confs_vals[i]
             elif main_param=='data_size':
                 bias = bias_vals
+                pos = pos_vals
                 data_size=data_size_vals[i]
                 n_confs = n_confs_vals
+            
+            # Transform "positivity" to 0-1 scale
+            pos = pos/100.
 
             columns = ['x{}'.format(i) for i in range(num_covars)]+['mu_0', 'mu_1','mu_2', 'mu_3', 'mu_4', 'y_0', 'y_1', 'y_2', 'y_3', 'y_4', 'y', 'z']
             temp_all = pd.DataFrame(columns=columns)
@@ -243,7 +256,7 @@ elif dataset=='synthetic':
                 #z = np.round((num_treats+1) * ((z_ini - z_ini.min()) / (z_ini.max() - z_ini.min())))
                 #z[z>=num_treats] = num_treats-1
                       
-                z_f = treatment_assignment_op(z, num_treats)
+                z_f = treatment_assignment_op(z, num_treats, pos, 1-pos)
 
                 # Output
                 # Baseline effect

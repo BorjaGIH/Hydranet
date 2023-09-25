@@ -5,7 +5,7 @@
 
 import os
 
-import pandas
+import pandas as pd
 import numpy as np
 import tensorflow as tf
 import logging
@@ -18,6 +18,7 @@ import sklearn.linear_model as lm
 import copy
 import argparse
 import keras
+import warnings
 
 from numpy import load
 from joblib import Parallel, delayed # for parallel processing

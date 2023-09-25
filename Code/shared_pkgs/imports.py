@@ -1,11 +1,8 @@
 # __init__
 
-#import sys
-#!{sys.executable} -m pip install scipy==1.7.1
-
 import os
 
-import pandas
+import pandas as pd
 import numpy as np
 import tensorflow as tf
 import logging
@@ -18,7 +15,9 @@ import sklearn.linear_model as lm
 import copy
 import argparse
 import keras
+import warnings
 
+from sklearn.linear_model import LogisticRegression
 from numpy import load
 from joblib import Parallel, delayed # for parallel processing
 from scipy.special import logit
@@ -35,5 +34,5 @@ from keras.layers import Layer, Input, Dense, Concatenate, BatchNormalization, D
 from keras.models import Model
 from keras import regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau, TerminateOnNaN
-from lightgbm import LGBMRegressor
+from lightgbm import LGBMRegressor, LGBMClassifier
 from IPython.display import clear_output
