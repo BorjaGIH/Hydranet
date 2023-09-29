@@ -55,7 +55,7 @@ def track_epsilon(concat_true, concat_pred): # For training monitoring purposes
     return tf.abs(tf.reduce_mean(epsilons))
 
 
-def make_tarreg_loss(ratio=1., hydranet_loss_=hydranet_loss): # Targeted regularization loss
+'''def make_tarreg_loss(ratio=1., hydranet_loss_=hydranet_loss): # Targeted regularization loss
     #print(hydranet_loss_)
     def tarreg_ATE_unbounded_domain_loss(concat_true, concat_pred):
         vanilla_loss = hydranet_loss_(concat_true, concat_pred)
@@ -94,6 +94,44 @@ def make_tarreg_loss(ratio=1., hydranet_loss_=hydranet_loss): # Targeted regular
         # Final
         loss = vanilla_loss + ratio * targeted_regularization
         
+        return loss
+
+    return tarreg_ATE_unbounded_domain_loss'''
+
+def make_tarreg_loss(ratio=1., hydranet_loss_=hydranet_loss): # Targeted regularization loss
+    #print(hydranet_loss_)
+    def tarreg_ATE_unbounded_domain_loss(concat_true, concat_pred):
+        vanilla_loss = hydranet_loss_(concat_true, concat_pred)
+
+        y_true = concat_true[:, 0]
+        t_true = concat_true[:, 1]
+
+        y0_pred = concat_pred[:, 0]
+        y1_pred = concat_pred[:, 1]
+        y2_pred = concat_pred[:, 2]
+        y3_pred = concat_pred[:, 3]
+        y4_pred = concat_pred[:, 4]
+        t_pred = concat_pred[:, 5:10]
+
+        epsilons = concat_pred[:, 10:14]
+        #t_pred = (t_pred + 0.001) / 1.001
+        # t_pred = tf.clip_by_value(t_pred,0.01, 0.99,name='t_pred')
+
+        # 5-fold
+        y_pred = tf.cast(t_true == 0, tf.float32) * y0_pred + tf.cast(t_true == 1, tf.float32) * y1_pred + tf.cast(t_true == 2, tf.float32) * y2_pred + tf.cast(t_true == 3, tf.float32) * y3_pred + tf.cast(t_true == 4,tf.float32) * y4_pred
+
+        h = tf.transpose(
+            [tf.cast(t_true == 1, tf.float32) / t_pred[:, 1] - tf.cast(t_true == 0, tf.float32) / t_pred[:, 0],
+             tf.cast(t_true == 2, tf.float32) / t_pred[:, 2] - tf.cast(t_true == 0, tf.float32) / t_pred[:, 0],
+             tf.cast(t_true == 3, tf.float32) / t_pred[:, 3] - tf.cast(t_true == 0, tf.float32) / t_pred[:, 0],
+             tf.cast(t_true == 4, tf.float32) / t_pred[:, 4] - tf.cast(t_true == 0, tf.float32) / t_pred[:, 0]])
+
+
+        y_pert = y_pred + tf.math.reduce_sum(tf.math.multiply(epsilons, h), axis=1)
+        targeted_regularization = tf.reduce_sum(tf.square(y_true - y_pert))
+
+        # Final
+        loss = vanilla_loss + ratio * targeted_regularization
         return loss
 
     return tarreg_ATE_unbounded_domain_loss

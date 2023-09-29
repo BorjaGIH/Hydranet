@@ -49,7 +49,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                     base_dat_path = os.path.join(estim_dat_path, 'baseline', ('0_replication_' + split + '.npz'))
 
                     # From Hydranet take also the TRUE value and the BIASED value
-                    q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+                    _, _, _, _, _, _, y, t, index = load_data(base_dat_path)
                     
                     # Sanity check
                     #if  max(t)!=(num_treats-1):
@@ -76,6 +76,9 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                         base_dat_path = os.path.join(estim_dat_path, model, ('0_replication_' + split + '.npz'))
                         q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
                         
+                        if (np.isnan(q_t0).any()) | (np.isnan(q_t1).any()) | (np.isnan(q_t2).any()) | (np.isnan(q_t3).any()) | (np.isnan(q_t4).any()):
+                                print('Nan in Hydra')
+                        
                         # Sanity check
                         #if max(t)!=(num_treats-1):
                         #    print('{} {}'.format(estim,folder))
@@ -86,7 +89,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                             psi = psi_aiptw(q_t0, q_t1, q_t2, q_t3, q_t4, g, t, y, num_treats, truncate_level=0.01)
                         else:
                             psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.)
-
+                            
                         result_dict[split][estim][model].append(psi)
 
                         
@@ -97,6 +100,9 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                             base_dat_path = os.path.join(estim_dat_path, ate, model, ('0_replication_' + split + '.npz'))
                             q_t0, q_t1, g, y, t, index = load_data_dr(base_dat_path)
                             
+                            if (np.isnan(q_t0).any()) | (np.isnan(q_t1).any()):
+                                print('Nan in Dragon')
+                            
                             # Sanity check
                             #if max(t)!=(num_treats-1):
                             #    print('{} {}'.format(estim,folder))
@@ -104,7 +110,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                                 
                             # Compute estimator
                             psi = psi_naive_dr(q_t0, q_t1, g,truncate_level=0.)
-
+                            
                             result_dict[split][estim][ate][model].append(psi)
 
                     # Postprocess: join ates
@@ -122,6 +128,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                         
                     # Compute estimator
                     psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g,truncate_level=0.)
+                    
 
                     result_dict[split][estim]['baseline'].append(psi)
 
@@ -156,6 +163,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                 result_dict[split]['naive']['baseline'] = np.nanmean(naive_vec, axis=0)
                 result_dict[split]['naive']['baseline_ae'] = np.nanmean(np.nansum(np.abs(true_vec - naive_vec), axis=1))
                 result_dict[split]['naive']['baseline_pe'] = np.nansum(np.abs(true_vec - naive_vec))/np.nansum(np.abs(true_vec)) *100
+                result_dict[split]['naive']['baseline_pe'] = np.nanmean(np.nansum(np.abs(true_vec - naive_vec), axis=1)/np.nansum(np.abs(true_vec),axis=1) *100)# New
                 result_dict[split]['naive']['baseline_ae_ciu'] = naive_ci_u
                 result_dict[split]['naive']['baseline_ae_cil'] = naive_ci_l
 
@@ -173,6 +181,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                     result_dict[split][estim][model] = np.nanmean(hydra_vec, axis=0)
                     result_dict[split][estim]['{}_ae'.format(model)] = np.nanmean(np.nansum(np.abs(true_vec - hydra_vec), axis=1))
                     result_dict[split][estim]['{}_pe'.format(model)] = np.nansum(np.abs(true_vec - hydra_vec))/np.nansum(np.abs(true_vec)) *100
+                    result_dict[split][estim]['{}_pe'.format(model)] = np.nanmean(np.nansum(np.abs(true_vec - hydra_vec), axis=1) / np.nansum(np.abs(true_vec),axis=1) * 100)  # New
                     result_dict[split][estim]['{}_ae_ciu'.format(model)] = Hydra_ci_u
                     result_dict[split][estim]['{}_ae_cil'.format(model)] = Hydra_ci_l
             
@@ -190,6 +199,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                     result_dict[split][estim][model] = np.nanmean(b2bd_vec, axis=0)
                     result_dict[split][estim]['{}_ae'.format(model)] = np.nanmean(np.nansum(np.abs(true_vec - b2bd_vec), axis=1))
                     result_dict[split][estim]['{}_pe'.format(model)] = np.nansum(np.abs(b2bd_vec - naive_vec))/np.nansum(np.abs(true_vec)) *100
+                    result_dict[split][estim]['{}_pe'.format(model)] = np.nanmean(np.nansum(np.abs(b2bd_vec - naive_vec), axis=1) / np.nansum(np.abs(true_vec),axis=1) * 100)  # New
                     result_dict[split][estim]['{}_ae_ciu'.format(model)] = b2bd_ci_u
                     result_dict[split][estim]['{}_ae_cil'.format(model)] = b2bd_ci_l
 
@@ -209,6 +219,7 @@ def collect_results_syn(input_dir, dr_flag, num_treats, reps):
                 result_dict[split][estim]['baseline'] = np.nanmean(tlearn_vec, axis=0)
                 result_dict[split][estim]['baseline_ae'] = np.nanmean(np.nansum(np.abs(true_vec - tlearn_vec), axis=1))
                 result_dict[split][estim]['baseline_pe'] = np.nansum(np.abs(tlearn_vec - naive_vec))/np.nansum(np.abs(true_vec)) *100
+                result_dict[split][estim]['baseline_pe'] = np.nanmean(np.nansum(np.abs(tlearn_vec - naive_vec), axis=1) / np.nansum(np.abs(true_vec),axis=1) * 100)  # New
                 result_dict[split][estim]['baseline_ae_ciu'] = tlearn_ci_u
                 result_dict[split][estim]['baseline_ae_cil'] = tlearn_ci_l
             
@@ -321,6 +332,8 @@ def analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir, d
     file = os.path.join(output_dir, 'summary.txt')
     with open(file, 'w') as sumfile:
         sumfile.write('In-sample\n')
+        sumfile.write('Sum of true values\n')# New
+        sumfile.write('{}\n'.format(df_train['true'].apply(lambda x: sum(np.abs(x)))))# New
         sumfile.write('Naive estimator error:\n')
         sumfile.write('{}\n'.format(df_train['naive'].apply(lambda x: x['baseline_ae']).to_string()))
         sumfile.write('B2BD baseline error:\n')
@@ -336,6 +349,8 @@ def analyse_results_syn(all_res_dict, main_param_dict, main_param, output_dir, d
         sumfile.write('*******\n')
 
         sumfile.write('Out-sample\n')
+        sumfile.write('Sum of true values\n')# New
+        sumfile.write('{}\n'.format(df_test['true'].apply(lambda x: sum(np.abs(x)))))# New
         sumfile.write('Naive estimator error:\n')
         sumfile.write('{}\n'.format(df_test['naive'].apply(lambda x: x['baseline_ae']).to_string()))
         sumfile.write('B2BD baseline error:\n')
@@ -401,7 +416,7 @@ def collect_results_ihdp(input_dir):
                     base_dat_path = os.path.join(estim_dat_path, 'baseline', ('0_replication_' + split + '.npz'))
 
                     # From Hydranet take also the TRUE value and the BIASED value
-                    q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+                    _, _, _, _, _, _, y, t, index = load_data(base_dat_path)
                     mu_0, mu_1, mu_2, mu_3, mu_4 = a[index], b[index], c[index], d[index], e[index]
 
                     truth1_0 = (mu_1 - mu_0).mean()
@@ -421,6 +436,10 @@ def collect_results_ihdp(input_dir):
                         # Model level (when applicable)
                         base_dat_path = os.path.join(estim_dat_path, model, ('0_replication_' + split + '.npz'))
                         q_t0, q_t1, q_t2, q_t3, q_t4, g, y, t, index = load_data(base_dat_path)
+
+                        if (np.isnan(q_t0).any()) | (np.isnan(q_t1).any()) | (np.isnan(q_t2).any()) | (np.isnan(q_t3).any()) | (np.isnan(q_t4).any()):
+                                print('Nan in Hydra')
+
                         # Compute estimator
                         psi = psi_naive(q_t0, q_t1, q_t2, q_t3, q_t4, g, truncate_level=0.)
 
@@ -436,6 +455,10 @@ def collect_results_ihdp(input_dir):
                             base_dat_path = os.path.join(estim_dat_path, ate, model,
                                                          ('0_replication_' + split + '.npz'))
                             q_t0, q_t1, g, y, t, index = load_data_dr(base_dat_path)
+
+                            if (np.isnan(q_t0).any()) | (np.isnan(q_t1).any()):
+                                print('Nan in Dragon')
+
                             # Compute estimator
                             psi = psi_naive_dr(q_t0, q_t1, g, truncate_level=0.)
 

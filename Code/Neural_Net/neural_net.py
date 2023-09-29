@@ -19,7 +19,8 @@ class EpsilonLayer(Layer):
     def call(self, inputs, **kwargs):
         # import ipdb; ipdb.set_trace()
         return self.epsilon * tf.ones_like(inputs)[:, 0:4]
-    
+
+
 # Define Hydranet architecture
 def make_hydranet(input_dim, num_treats, reg_l2):
     """

@@ -84,7 +84,7 @@ def analyse_generated_data(temp_all, path):
     ### Individual histograms
 
     for z in range(num_treats):
-        plot_histograms(data=temp_all, z=z, y_toplot='y_{}'.format(z), bins=100, path=path)
+        plot_histograms(data=temp_all, z=z, y_toplot='y_{}'.format(z), bins=100, path=path)    
 
 
 if dataset=='ihdp':
@@ -193,12 +193,14 @@ if dataset=='ihdp':
 
 elif dataset=='synthetic':
     var_dict = {'bias':{'bias':[2, 5, 10, 30], 'positivity': 80, 'data_size':2000, 'n_confs':2},
-                'positivity': {'bias':20, 'positivity': [60, 70, 80, 95], 'data_size':2000, 'n_confs':2},
+                'positivity': {'bias':20, 'positivity': [60, 70, 80, 90, 95, 98, 99], 'data_size':2000, 'n_confs':2},
                 'n_confs':{'bias':20, 'positivity': 80,'data_size':2000, 'n_confs':[2, 5, 10, 18]},
-                'data_size':{'bias':20, 'positivity': 80,'data_size':[1000, 2000, 5000, 10000], 'n_confs':2}
+                'data_size':{'bias':20, 'positivity': 80,'data_size':[1000, 2000, 5000, 8000], 'n_confs':2}
                 }
 
-    for main_param in ['bias','n_confs','data_size', 'positivity']:
+    #for main_param in ['bias','n_confs','data_size', 'positivity']:
+    for main_param in ['bias']:
+
 
         bias_vals = var_dict[main_param]['bias']
         n_confs_vals = var_dict[main_param]['n_confs']
@@ -257,6 +259,7 @@ elif dataset=='synthetic':
                 #z[z>=num_treats] = num_treats-1
                       
                 z_f = treatment_assignment_op(z, num_treats, pos, 1-pos)
+                z=z_f
 
                 # Output
                 # Baseline effect

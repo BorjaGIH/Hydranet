@@ -1,32 +1,32 @@
-Percentage of T==0: 0.19445
-Percentage of T==1: 0.377325
-Percentage of T==2: 0.3204
-Percentage of T==3: 0.0956
-Percentage of T==4: 0.012225
+Percentage of T==0: 0.1953
+Percentage of T==1: 0.3383
+Percentage of T==2: 0.288325
+Percentage of T==3: 0.118125
+Percentage of T==4: 0.05995
 Max T 4.0
 *******
-True average y_0: 0.017283664800068165
-True average y_1: 0.24818368838274502
-True average y_2: 12.517181422434115
-True average y_3: 0.7277606615967118
-True average y_4: 0.3972865602930213
+True average y_0: -0.09103100535983916
+True average y_1: -0.1435737509997845
+True average y_2: 12.536413667529237
+True average y_3: -0.3156952912103894
+True average y_4: -0.22335131417353413
 *******
-Biased average y0: -0.41208410926189015
-Biased average y1: 0.2318206676562255
-Biased average y2: 12.658815305834871
-Biased average y3: 2.831853674368267
-Biased average y4: 5.327783033958264
+Biased average y0: 0.1270519093048356
+Biased average y1: -0.12838012331152024
+Biased average y2: 12.56637005800459
+Biased average y3: -2.6422469893922944
+Biased average y4: 2.48383418006639
 *******
-Bias 0: 0.4293677740619583
-Bias 0: 0.016363020726519517
-Bias 2: 0.14163388340075578
-Bias 3: 2.104093012771555
-Bias 4: 4.930496473665243
+results_bias 0: 0.21808291466467475
+results_bias 0: 0.015193627688264266
+results_bias 2: 0.0299563904753537
+results_bias 3: 2.326551698181905
+results_bias 4: 2.707185494239924
 *******
-Bias 0 perc: 3.0943582954032856
-Bias 1 perc: 0.03075069993879937
-Bias 2 perc: 1.0892654474717014
-Bias 3 perc: 1.4516564855889935
-Bias 3 perc: 5.843112080313299
-total: 11.509143008716078
+results_bias 0 perc: 1.5711207652595018
+results_bias 1 perc: 0.028230851249260096
+results_bias 2 perc: 0.23040603288615255
+results_bias 3 perc: 1.5891998769578013
+results_bias 3 perc: 3.172568863316336
+total: 6.591526389669052
 *******

@@ -3,7 +3,7 @@ from Helpers.helper_funcs import *
 from Neural_Net.neural_net import *
 from Neural_Net.losses import *
 
-def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
+'''def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
     print('Hydranet, T-reg:', targeted_regularization)
     verbose = 0
     
@@ -13,6 +13,125 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     x_scaler = StandardScaler().fit(x_unscaled)
     #x = x_scaler.transform(x_unscaled) # when scaled
     x = x_unscaled # when unscaled
+        
+    train_outputs = []
+    test_outputs = []
+    
+    hydranet = make_hydranet(x.shape[1], num_treats, 0.01)
+
+    metrics = [hydranet_loss, regression_loss, categorical_classification_loss, treatment_accuracy, track_epsilon]
+
+    if targeted_regularization:
+        loss = make_tarreg_loss(ratio=4, hydranet_loss_=loss)
+    else:
+        loss = loss
+
+    # Get train and test indexes
+    train_index, test_index = train_test_split(np.arange(x.shape[0]), test_size=val_split, random_state=1, shuffle=True)
+
+    #x_train, x_test = x[train_index,:], x[test_index,:] # when scaled
+    x_train, x_test = x.iloc[train_index], x.iloc[test_index] # when unscaled
+    y_train, y_test = y[train_index], y[test_index]
+    t_train, t_test = t[train_index], t[test_index]
+
+    yt_train = np.concatenate([y_train, t_train], 1)
+
+    # With Adam
+    hydranet.compile(
+        optimizer=Adam(learning_rate=1e-3),
+        loss=loss, metrics=metrics, run_eagerly=eager_exec)
+
+    # Save best model callback
+    save_best_model_adam = SaveBestModel()
+
+    adam_callbacks = [
+        TerminateOnNaN(),
+        save_best_model_adam,
+        #PlotLearning(),
+        EarlyStopping(monitor='val_loss', patience=2, min_delta=0.),
+        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto', min_delta=1e-8, cooldown=0, min_lr=0)
+        ]
+    
+    hydranet.fit(x_train, yt_train, callbacks=adam_callbacks,
+                  validation_split=val_split, epochs=100,
+                  batch_size=batch_size, verbose=verbose)
+
+    # Set best weigts from callback
+    if np.isnan([np.isnan(i).any() for i in save_best_model_adam.best_weights]).any():
+        print('Nans in weights Hydranet adam')
+    hydranet.set_weights(save_best_model_adam.best_weights)
+    
+    # with SGD
+    sgd_lr = 1e-5
+    momentum = 0.9
+    hydranet.compile(optimizer=SGD(learning_rate=sgd_lr, momentum=momentum, nesterov=True),
+                      loss=loss, metrics=metrics, run_eagerly=eager_exec)
+
+    # Save best model callback
+    save_best_model_sgd = SaveBestModel()
+
+    sgd_callbacks = [
+        TerminateOnNaN(),
+        save_best_model_sgd,
+        #PlotLearning(),
+        EarlyStopping(monitor='val_loss', patience=40, min_delta=0.),
+        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',min_delta=0., cooldown=0, min_lr=0)
+        ]
+    
+    hydranet.fit(x_train, yt_train, callbacks=sgd_callbacks,
+                  validation_split=val_split, epochs=200,
+                  batch_size=batch_size, verbose=verbose)
+
+    # Set best weigts from callback
+    if np.isnan([np.isnan(i).any() for i in save_best_model_sgd.best_weights]).any():
+        print('Nans in weights Hydranet SGD')
+    hydranet.set_weights(save_best_model_sgd.best_weights)
+
+    # Plot metrics to monitor the training process
+    ''plt.figure()
+    plt.plot(hydranet.history.history['loss'])
+    plt.plot(hydranet.history.history['val_loss'])
+    plt.legend(["Train", "Test"])
+    plt.title("Hydranet Loss")
+    plt.show() # Training and validation losses
+
+    plt.figure()
+    plt.plot(hydranet.history.history['treatment_accuracy'])
+    plt.plot(hydranet.history.history['val_treatment_accuracy'])
+    plt.legend(["Train", "Test"])
+    plt.title("Hydranet Treatment prediction accuracy")
+    plt.show()  # Treatment prediction accuracy
+    
+    plt.figure()
+    plt.plot(hydranet.history.history['track_epsilon'])
+    plt.plot(hydranet.history.history['val_track_epsilon'])
+    plt.legend(["Train", "Test"])
+    plt.title("Epsilon (T-reg = {})".format(targeted_regularization))
+    plt.show() # Epsilon''
+
+    
+    yt_hat_test = hydranet.predict(x_test)
+    yt_hat_train = hydranet.predict(x_train)
+    
+    train_outputs += [split_output(yt_hat_train, t_train, y_train, y_scaler, x_scaler, x_train, train_index)]
+    test_outputs += [split_output(yt_hat_test, t_test, y_test, y_scaler, x_scaler, x_test, test_index)]
+
+    K.clear_session()
+
+    return test_outputs, train_outputs'''
+
+
+def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
+    print('Hydranet, T-reg:', targeted_regularization)
+    verbose = 0
+    
+    y_unscaled = y_unscaled.values.reshape(-1, 1)
+    y_scaler = StandardScaler().fit(y_unscaled)
+    y = y_scaler.transform(y_unscaled)
+    
+    x_scaler = StandardScaler().fit(x_unscaled)
+    #x = x_scaler.transform(x_unscaled)
+    x = x_unscaled
         
     train_outputs = []
     test_outputs = []
@@ -41,23 +160,18 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
         optimizer=Adam(learning_rate=1e-3),
         loss=loss, metrics=metrics, run_eagerly=eager_exec)
 
-    # Save best model callback
-    save_best_model_adam = SaveBestModel()
-              
     adam_callbacks = [
-        save_best_model_adam,
         TerminateOnNaN(),
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', mode='min', patience=5, min_delta=0.),
-        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=10, verbose=verbose, mode='auto', min_delta=1e-8, cooldown=0, min_lr=0)
-        ]
+        EarlyStopping(monitor='val_loss', patience=2, min_delta=0.),
+        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
+                          min_delta=1e-8, cooldown=0, min_lr=0)
+    ]
     
     hydranet.fit(x_train, yt_train, callbacks=adam_callbacks,
-                  validation_split=val_split, epochs=100,
+                  validation_split=val_split,
+                  epochs=100,
                   batch_size=batch_size, verbose=verbose)
-    
-    # Set best weigts from callback
-    hydranet.set_weights(save_best_model_adam.best_weights)
     
     # with SGD
     sgd_lr = 1e-5
@@ -65,23 +179,19 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     hydranet.compile(optimizer=SGD(learning_rate=sgd_lr, momentum=momentum, nesterov=True),
                       loss=loss, metrics=metrics, run_eagerly=eager_exec)
     
-    # Save best model callback
-    save_best_model_sgd = SaveBestModel()
-
     sgd_callbacks = [
-        save_best_model_sgd,
         TerminateOnNaN(),
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', mode='min', patience=40, min_delta=0.),
-        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=10, verbose=verbose, mode='auto',min_delta=0., cooldown=0, min_lr=0)
-        ]
+        EarlyStopping(monitor='val_loss', patience=40, min_delta=0.),
+        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
+                          min_delta=0., cooldown=0, min_lr=0)
+    ]
     
     hydranet.fit(x_train, yt_train, callbacks=sgd_callbacks,
-                  validation_split=val_split, epochs=200,
+                  validation_split=val_split,
+                  epochs=200,
                   batch_size=batch_size, verbose=verbose)
     
-    # Set best weigts from callback
-    hydranet.set_weights(save_best_model_sgd.best_weights)
 
     # Plot metrics to monitor the training process
     '''plt.figure()
@@ -105,7 +215,6 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     plt.title("Epsilon (T-reg = {})".format(targeted_regularization))
     plt.show() # Epsilon'''
 
-    
     yt_hat_test = hydranet.predict(x_test)
     yt_hat_train = hydranet.predict(x_train)
     
@@ -144,6 +253,9 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
     
     yt_train = np.concatenate([y_train, t_train], 1)
 
+    # Save best model callback
+    save_best_model_adam = SaveBestModel()
+
     # With Adam
     opt = Adam(learning_rate=1e-3)
 
@@ -154,13 +266,20 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
 
     adam_callbacks = [
         TerminateOnNaN(),
+        #save_best_model_adam,
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', patience=5, min_delta=0.),
+        EarlyStopping(monitor='val_loss', patience=10, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',min_delta=1e-8, cooldown=0, min_lr=0)]
 
     dragonnet.fit(x_train, yt_train, callbacks=adam_callbacks,
                   validation_split=val_split, epochs=150,
                   batch_size=batch_size, verbose=verbose)
+
+    #if np.isnan([np.isnan(i).any() for i in save_best_model_adam.best_weights]).any():
+    #    print('Nans in weights Dragonnet adam')
+
+    # Set best weigts from callback
+    #dragonnet.set_weights(save_best_model_adam.best_weights)
 
     # with SGD
     sgd_lr = 1e-5
@@ -170,8 +289,12 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
         loss=loss, metrics=metrics,
         run_eagerly=False)
 
+    # Save best model callback
+    save_best_model_sgd = SaveBestModel()
+
     sgd_callbacks = [
         TerminateOnNaN(),
+        #save_best_model_sgd,
         #PlotLearning(),
         EarlyStopping(monitor='val_loss', patience=20, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',min_delta=0., cooldown=0, min_lr=0)]
@@ -180,6 +303,11 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
                   validation_split=val_split, epochs=200,
                   batch_size=batch_size, verbose=verbose)
 
+    #if np.isnan([np.isnan(i).any() for i in save_best_model_sgd.best_weights]).any():
+    #    print('Nans in weights Dragonnet SGD')
+
+    # Set best weigts from callback
+    #dragonnet.set_weights(save_best_model_adam.best_weights)
 
     # Plot metrics to monitor the training process
     '''plt.figure()
@@ -243,11 +371,11 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
         xyt_train = pd.DataFrame(np.concatenate([x_train, y_train, t_train], 1), columns=cols)
         X, T, y = covars, "z", "y"
 
-    m0 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    m1 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    m2 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    m3 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    m4 = LGBMRegressor(max_depth=2, min_child_samples=60)
+    m0 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
+    m1 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
+    m2 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
+    m3 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
+    m4 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
 
     m0.fit(xyt_train.query(f"{T}==0")[X], xyt_train.query(f"{T}==0")[y])
     m1.fit(xyt_train.query(f"{T}==1")[X], xyt_train.query(f"{T}==1")[y])

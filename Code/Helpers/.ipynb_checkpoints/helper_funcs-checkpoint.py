@@ -240,7 +240,7 @@ class SaveBestModel(tf.keras.callbacks.Callback):
 
 def generate_result_table_ihdp(file, train_table, test_table, err_type='ae'):
     # Generate table for latex
-    index_ = pd.Index(['naive', 'b2bd base', 'T-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
+    index_ = pd.Index(['naive', 'b2bd base', 'M-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
 
     result_table_tr = pd.concat([
                       pd.concat([train_table[1:].apply(lambda x: x['baseline_ae']),\
@@ -269,7 +269,7 @@ def generate_result_table_ihdp(file, train_table, test_table, err_type='ae'):
 
 def generate_result_table_syn(file, train_table, test_table, main_param_dict, main_param):
     # Generate table for latex
-    index_ = pd.Index(['naive', 'b2bd base', 'T-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
+    index_ = pd.Index(['naive', 'b2bd base', 'M-learn base', 'Hydranet base', 'b2bd t-reg', 'Hydranet t-reg'])
 
     # In sample
     result_table_tr = pd.DataFrame()
@@ -329,3 +329,19 @@ def generate_result_table_syn(file, train_table, test_table, main_param_dict, ma
         tolatex_file.write(result_table_all.to_latex())
 
     return None
+
+
+def compute_pseudoobs_xlearner(x, y, t, ms, tt):
+    ind_i = (t == tt)
+
+    term0 = ind_i.flatten()*(y.flatten() - ms[0].predict(x))
+
+    term1 = (t==0).flatten()*(ms[tt].predict(x) - y.flatten()) + (t==1).flatten()*(ms[tt].predict(x) - y.flatten()) + \
+            (t==2).flatten()*(ms[tt].predict(x) - y.flatten()) + (t==3).flatten()*(ms[tt].predict(x) - y.flatten()) + (t==4).flatten()*(ms[tt].predict(x) - y.flatten())
+
+    term2 = (t==1).flatten()*(ms[1].predict(x) - ms[0].predict(x)).flatten() + (t==2).flatten()*(ms[2].predict(x) - ms[0].predict(x)).flatten() + \
+            (t==3).flatten()*(ms[3].predict(x) - ms[0].predict(x)).flatten() + (t==4).flatten()*(ms[4].predict(x) - ms[0].predict(x)).flatten()
+
+    z = (term0 + term1 + term2).reshape(-1,1)
+
+    return z

@@ -4,7 +4,6 @@ from shared_pkgs.imports import *
 from Estimation.collect_analyse import *
 from Training.run_train_pred import *
 
-
 def main():
 
     parser = argparse.ArgumentParser()
@@ -26,7 +25,7 @@ def main():
     parser.add_argument("--reps_start", type=int, default=0)
     parser.add_argument("--reps_end", type=int, default=20)
     parser.add_argument("--trainmode", type=str, default='sequential', choices=["parallel", "sequential"])
-    parser.add_argument("--eager_exec", type=bool, default=False)
+    parser.add_argument("--eager_exec", type=bool, default=True)
     parser.add_argument("--meta_learner", type=str, default='T', choices=['T','X'])
 
     args = parser.parse_args()
@@ -51,24 +50,20 @@ def main():
 
     # Result dicts
     main_param_dict = {'bias':[2,5,10,30],
-                       'positivity':[60, 70, 80, 95],
+                       'positivity':[60, 70, 80, 90, 95, 98],
                        'n_confs':[2, 5, 10, 18],
-                       'data_size':[1000, 2000, 5000, 10000]
+                       'data_size':[1000, 2000, 5000, 8000]
                       }
     
     all_res_dict = {'bias': {2:[], 5:[], 10:[], 30:[]},
-                    'positivity': {60:[], 70:[], 80:[], 95:[]},
+                    'positivity': {60:[], 70:[], 80:[], 90:[], 95:[], 98:[]},
                     'n_confs': {2:[], 5:[], 10:[], 18:[]},
-                    'data_size': {1000:[], 2000:[], 5000:[], 10000:[]} 
+                    'data_size': {1000:[], 2000:[], 5000:[], 8000:[]} 
                    }
     
-    # System args
-    # TODO Remove unnecesary lines
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
-    deprecation._PRINT_DEPRECATION_WARNINGS = False 
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR) 
-    tf.get_logger().setLevel(logging.ERROR) 
-    tf.autograph.set_verbosity(1) 
+    # Avoid TF being too verbose
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+    warnings.simplefilter(action='ignore', category=UserWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     
     # Eager execution

@@ -3,7 +3,7 @@ from Helpers.helper_funcs import *
 from Neural_Net.neural_net import *
 from Neural_Net.losses import *
 
-def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
+'''def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
     print('Hydranet, T-reg:', targeted_regularization)
     verbose = 0
     
@@ -13,6 +13,125 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     x_scaler = StandardScaler().fit(x_unscaled)
     #x = x_scaler.transform(x_unscaled) # when scaled
     x = x_unscaled # when unscaled
+        
+    train_outputs = []
+    test_outputs = []
+    
+    hydranet = make_hydranet(x.shape[1], num_treats, 0.01)
+
+    metrics = [hydranet_loss, regression_loss, categorical_classification_loss, treatment_accuracy, track_epsilon]
+
+    if targeted_regularization:
+        loss = make_tarreg_loss(ratio=4, hydranet_loss_=loss)
+    else:
+        loss = loss
+
+    # Get train and test indexes
+    train_index, test_index = train_test_split(np.arange(x.shape[0]), test_size=val_split, random_state=1, shuffle=True)
+
+    #x_train, x_test = x[train_index,:], x[test_index,:] # when scaled
+    x_train, x_test = x.iloc[train_index], x.iloc[test_index] # when unscaled
+    y_train, y_test = y[train_index], y[test_index]
+    t_train, t_test = t[train_index], t[test_index]
+
+    yt_train = np.concatenate([y_train, t_train], 1)
+
+    # With Adam
+    hydranet.compile(
+        optimizer=Adam(learning_rate=1e-3),
+        loss=loss, metrics=metrics, run_eagerly=eager_exec)
+
+    # Save best model callback
+    save_best_model_adam = SaveBestModel()
+
+    adam_callbacks = [
+        TerminateOnNaN(),
+        save_best_model_adam,
+        #PlotLearning(),
+        EarlyStopping(monitor='val_loss', patience=2, min_delta=0.),
+        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto', min_delta=1e-8, cooldown=0, min_lr=0)
+        ]
+    
+    hydranet.fit(x_train, yt_train, callbacks=adam_callbacks,
+                  validation_split=val_split, epochs=100,
+                  batch_size=batch_size, verbose=verbose)
+
+    # Set best weigts from callback
+    if np.isnan([np.isnan(i).any() for i in save_best_model_adam.best_weights]).any():
+        print('Nans in weights Hydranet adam')
+    hydranet.set_weights(save_best_model_adam.best_weights)
+    
+    # with SGD
+    sgd_lr = 1e-5
+    momentum = 0.9
+    hydranet.compile(optimizer=SGD(learning_rate=sgd_lr, momentum=momentum, nesterov=True),
+                      loss=loss, metrics=metrics, run_eagerly=eager_exec)
+
+    # Save best model callback
+    save_best_model_sgd = SaveBestModel()
+
+    sgd_callbacks = [
+        TerminateOnNaN(),
+        save_best_model_sgd,
+        #PlotLearning(),
+        EarlyStopping(monitor='val_loss', patience=40, min_delta=0.),
+        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',min_delta=0., cooldown=0, min_lr=0)
+        ]
+    
+    hydranet.fit(x_train, yt_train, callbacks=sgd_callbacks,
+                  validation_split=val_split, epochs=200,
+                  batch_size=batch_size, verbose=verbose)
+
+    # Set best weigts from callback
+    if np.isnan([np.isnan(i).any() for i in save_best_model_sgd.best_weights]).any():
+        print('Nans in weights Hydranet SGD')
+    hydranet.set_weights(save_best_model_sgd.best_weights)
+
+    # Plot metrics to monitor the training process
+    ''plt.figure()
+    plt.plot(hydranet.history.history['loss'])
+    plt.plot(hydranet.history.history['val_loss'])
+    plt.legend(["Train", "Test"])
+    plt.title("Hydranet Loss")
+    plt.show() # Training and validation losses
+
+    plt.figure()
+    plt.plot(hydranet.history.history['treatment_accuracy'])
+    plt.plot(hydranet.history.history['val_treatment_accuracy'])
+    plt.legend(["Train", "Test"])
+    plt.title("Hydranet Treatment prediction accuracy")
+    plt.show()  # Treatment prediction accuracy
+    
+    plt.figure()
+    plt.plot(hydranet.history.history['track_epsilon'])
+    plt.plot(hydranet.history.history['val_track_epsilon'])
+    plt.legend(["Train", "Test"])
+    plt.title("Epsilon (T-reg = {})".format(targeted_regularization))
+    plt.show() # Epsilon''
+
+    
+    yt_hat_test = hydranet.predict(x_test)
+    yt_hat_train = hydranet.predict(x_train)
+    
+    train_outputs += [split_output(yt_hat_train, t_train, y_train, y_scaler, x_scaler, x_train, train_index)]
+    test_outputs += [split_output(yt_hat_test, t_test, y_test, y_scaler, x_scaler, x_test, test_index)]
+
+    K.clear_session()
+
+    return test_outputs, train_outputs'''
+
+
+def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
+    print('Hydranet, T-reg:', targeted_regularization)
+    verbose = 0
+    
+    y_unscaled = y_unscaled.values.reshape(-1, 1)
+    y_scaler = StandardScaler().fit(y_unscaled)
+    y = y_scaler.transform(y_unscaled)
+    
+    x_scaler = StandardScaler().fit(x_unscaled)
+    #x = x_scaler.transform(x_unscaled)
+    x = x_unscaled
         
     train_outputs = []
     test_outputs = []
@@ -41,23 +160,18 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
         optimizer=Adam(learning_rate=1e-3),
         loss=loss, metrics=metrics, run_eagerly=eager_exec)
 
-    # Save best model callback
-    save_best_model_adam = SaveBestModel()
-              
     adam_callbacks = [
-        save_best_model_adam,
         TerminateOnNaN(),
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', mode='min', patience=5, min_delta=0.),
-        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=10, verbose=verbose, mode='auto', min_delta=1e-8, cooldown=0, min_lr=0)
-        ]
+        EarlyStopping(monitor='val_loss', patience=2, min_delta=0.),
+        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
+                          min_delta=1e-8, cooldown=0, min_lr=0)
+    ]
     
     hydranet.fit(x_train, yt_train, callbacks=adam_callbacks,
-                  validation_split=val_split, epochs=100,
+                  validation_split=val_split,
+                  epochs=100,
                   batch_size=batch_size, verbose=verbose)
-    
-    # Set best weigts from callback
-    hydranet.set_weights(save_best_model_adam.best_weights)
     
     # with SGD
     sgd_lr = 1e-5
@@ -65,23 +179,19 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     hydranet.compile(optimizer=SGD(learning_rate=sgd_lr, momentum=momentum, nesterov=True),
                       loss=loss, metrics=metrics, run_eagerly=eager_exec)
     
-    # Save best model callback
-    save_best_model_sgd = SaveBestModel()
-
     sgd_callbacks = [
-        save_best_model_sgd,
         TerminateOnNaN(),
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', mode='min', patience=40, min_delta=0.),
-        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=10, verbose=verbose, mode='auto',min_delta=0., cooldown=0, min_lr=0)
-        ]
+        EarlyStopping(monitor='val_loss', patience=40, min_delta=0.),
+        ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',
+                          min_delta=0., cooldown=0, min_lr=0)
+    ]
     
     hydranet.fit(x_train, yt_train, callbacks=sgd_callbacks,
-                  validation_split=val_split, epochs=200,
+                  validation_split=val_split,
+                  epochs=200,
                   batch_size=batch_size, verbose=verbose)
     
-    # Set best weigts from callback
-    hydranet.set_weights(save_best_model_sgd.best_weights)
 
     # Plot metrics to monitor the training process
     '''plt.figure()
@@ -105,7 +215,6 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     plt.title("Epsilon (T-reg = {})".format(targeted_regularization))
     plt.show() # Epsilon'''
 
-    
     yt_hat_test = hydranet.predict(x_test)
     yt_hat_train = hydranet.predict(x_train)
     
@@ -144,6 +253,9 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
     
     yt_train = np.concatenate([y_train, t_train], 1)
 
+    # Save best model callback
+    save_best_model_adam = SaveBestModel()
+
     # With Adam
     opt = Adam(learning_rate=1e-3)
 
@@ -154,13 +266,20 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
 
     adam_callbacks = [
         TerminateOnNaN(),
+        #save_best_model_adam,
         #PlotLearning(),
-        EarlyStopping(monitor='val_loss', patience=5, min_delta=0.),
+        EarlyStopping(monitor='val_loss', patience=10, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',min_delta=1e-8, cooldown=0, min_lr=0)]
 
     dragonnet.fit(x_train, yt_train, callbacks=adam_callbacks,
                   validation_split=val_split, epochs=150,
                   batch_size=batch_size, verbose=verbose)
+
+    #if np.isnan([np.isnan(i).any() for i in save_best_model_adam.best_weights]).any():
+    #    print('Nans in weights Dragonnet adam')
+
+    # Set best weigts from callback
+    #dragonnet.set_weights(save_best_model_adam.best_weights)
 
     # with SGD
     sgd_lr = 1e-5
@@ -170,8 +289,12 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
         loss=loss, metrics=metrics,
         run_eagerly=False)
 
+    # Save best model callback
+    save_best_model_sgd = SaveBestModel()
+
     sgd_callbacks = [
         TerminateOnNaN(),
+        #save_best_model_sgd,
         #PlotLearning(),
         EarlyStopping(monitor='val_loss', patience=20, min_delta=0.),
         ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=verbose, mode='auto',min_delta=0., cooldown=0, min_lr=0)]
@@ -180,6 +303,11 @@ def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_
                   validation_split=val_split, epochs=200,
                   batch_size=batch_size, verbose=verbose)
 
+    #if np.isnan([np.isnan(i).any() for i in save_best_model_sgd.best_weights]).any():
+    #    print('Nans in weights Dragonnet SGD')
+
+    # Set best weigts from callback
+    #dragonnet.set_weights(save_best_model_adam.best_weights)
 
     # Plot metrics to monitor the training process
     '''plt.figure()
@@ -243,11 +371,11 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
         xyt_train = pd.DataFrame(np.concatenate([x_train, y_train, t_train], 1), columns=cols)
         X, T, y = covars, "z", "y"
 
-    m0 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    m1 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    m2 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    m3 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    m4 = LGBMRegressor(max_depth=2, min_child_samples=60)
+    m0 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
+    m1 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
+    m2 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
+    m3 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
+    m4 = LGBMRegressor(max_depth=2, min_child_samples=60,n_jobs=20)
 
     m0.fit(xyt_train.query(f"{T}==0")[X], xyt_train.query(f"{T}==0")[y])
     m1.fit(xyt_train.query(f"{T}==1")[X], xyt_train.query(f"{T}==1")[y])
@@ -271,21 +399,21 @@ def train_and_predict_tlearn(dataset, t, y_unscaled, x, val_split):
 
 
 def train_and_predict_xlearn(dataset, t, y_unscaled, x, val_split):
-    print('T-learn')
+    print('X-learn')
 
     y_unscaled = y_unscaled.values.reshape(-1, 1)
     y_scaler = StandardScaler().fit(y_unscaled)
     y = y_scaler.transform(y_unscaled)
     x_scaler = StandardScaler().fit(x)
-    x = x_scaler.transform(x) # when scaled
+    #x = x_scaler.transform(x) # when scaled
     
     train_outputs = []
     test_outputs = []
 
     train_index, test_index = train_test_split(np.arange(x.shape[0]), test_size=val_split, random_state=1, shuffle=True)
 
-    x_train, x_test = x[train_index,:], x[test_index,:] # when scaled
-    #x_train, x_test = x.iloc[train_index], x.iloc[test_index] # when unscaled
+    #x_train, x_test = x[train_index,:], x[test_index,:] # when scaled
+    x_train, x_test = x.iloc[train_index], x.iloc[test_index] # when unscaled
   
     y_train, y_test = y[train_index], y[test_index]
     t_train, t_test = t[train_index], t[test_index]
@@ -319,45 +447,27 @@ def train_and_predict_xlearn(dataset, t, y_unscaled, x, val_split):
     m3.fit(xyt_train.query(f"{T}==3")[X], xyt_train.query(f"{T}==3")[y])
     m4.fit(xyt_train.query(f"{T}==4")[X], xyt_train.query(f"{T}==4")[y])
 
-    g = LogisticRegression(penalty='none', multi_class='auto') # or 'ovr'
-    g.fit(xyt_train[X], xyt_train[T]);
+    # From the paper: Comparison of meta-learners for estimating multi-valued treatment heterogeneous effects
+    # Naoufal Acharki et al.
 
-    d_train = xyt_train[T].copy()
-    d_train[xyt_train[T] == 0] = m0.predict(xyt_train[X]) - xyt_train[y]
-    d_train[xyt_train[T] == 1] = m1.predict(xyt_train[X]) - xyt_train[y]
-    d_train[xyt_train[T] == 2] = m2.predict(xyt_train[X]) - xyt_train[y]
-    d_train[xyt_train[T] == 3] = m3.predict(xyt_train[X]) - xyt_train[y]
-    d_train[xyt_train[T] == 4] = m4.predict(xyt_train[X]) - xyt_train[y]
+    ms = [m0, m1, m2, m3, m4]
 
-    # Second stage
-    mx0 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    mx1 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    mx2 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    mx3 = LGBMRegressor(max_depth=2, min_child_samples=60)
-    mx4 = LGBMRegressor(max_depth=2, min_child_samples=60)
+    Z0_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=0)
+    Z1_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=1)
+    Z2_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=2)
+    Z3_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=3)
+    Z4_train = compute_pseudoobs_xlearner(x_train, y_train, t_train, ms, tt=4)
 
-    mx0.fit(xyt_train.query(f"{T}==0")[X], d_train[xyt_train[T] == 0])
-    mx1.fit(xyt_train.query(f"{T}==1")[X], d_train[xyt_train[T] == 1])
-    mx2.fit(xyt_train.query(f"{T}==2")[X], d_train[xyt_train[T] == 2])
-    mx3.fit(xyt_train.query(f"{T}==3")[X], d_train[xyt_train[T] == 3])
-    mx4.fit(xyt_train.query(f"{T}==4")[X], d_train[xyt_train[T] == 4])
-
-    def ps_predict(df, t):
-        return g.predict_proba(df[X])[:, t]
+    Z0_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=0)
+    Z1_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=1)
+    Z2_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=2)
+    Z3_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=3)
+    Z4_test = compute_pseudoobs_xlearner(x_test, y_test, t_test, ms, tt=4)
 
 
-    yt_hat_test = np.concatenate([(ps_predict(x_test, 0) * mx0.predict(x_test[X])).reshape(-1, 1),
-                                  (ps_predict(x_test, 1) * mx1.predict(x_test[X])).reshape(-1, 1),
-                                  (ps_predict(x_test, 2) * mx2.predict(x_test[X])).reshape(-1, 1),
-                                  (ps_predict(x_test, 3) * mx3.predict(x_test[X])).reshape(-1, 1),
-                                  (ps_predict(x_test, 4) * mx4.predict(x_test[X])).reshape(-1, 1)], axis=1)
+    yt_hat_test = np.concatenate([Z0_test,Z1_test,Z2_test,Z3_test,Z4_test], axis=1)
 
-    yt_hat_train = np.concatenate([(ps_predict(xyt_train, 0) * mx0.predict(xyt_train[X])).reshape(-1, 1),
-                                   (ps_predict(xyt_train, 1) * mx1.predict(xyt_train[X])).reshape(-1, 1),
-                                   (ps_predict(xyt_train, 2) * mx2.predict(xyt_train[X])).reshape(-1, 1),
-                                   (ps_predict(xyt_train, 3) * mx3.predict(xyt_train[X])).reshape(-1, 1),
-                                   (ps_predict(xyt_train, 4) * mx4.predict(xyt_train[X])).reshape(-1, 1)], axis=1)
-
+    yt_hat_train = np.concatenate([Z0_train,Z1_train,Z2_train,Z3_train,Z4_train], axis=1)
 
     train_outputs += [split_output_t(yt_hat_train, t_train, y_train, y_scaler, x_train, train_index)]
 
@@ -366,7 +476,7 @@ def train_and_predict_xlearn(dataset, t, y_unscaled, x, val_split):
     return test_outputs, train_outputs
 
 
-def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size, reps, eager_exec):    
+def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_split, batch_size, reps, eager_exec, meta_learn):
     #tf.debugging.enable_check_numerics()
 
     simulation_files = sorted(glob.glob("{}/*.csv".format(input_dir)), key=lambda x: int( x.split('.')[0].split('_')[-1] ))[reps[0]:reps[1]]
@@ -387,31 +497,24 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
         
         ############# RUN THE DIFFERENT ESTIMATORS ##############
         
-        ################# T-learner
-        test_outputs_tlearn, train_output_tlearn = train_and_predict_xlearn(dataset, t, y, x, val_split=val_split) # WARNIIIIIING X LEARNEEEEER!!
+        ################# Meta-learner
+        if meta_learn=='T':
+            test_outputs_mlearn, train_output_mlearn = train_and_predict_tlearn(dataset, t, y, x, val_split=val_split)
+        elif meta_learn=='X':
+            test_outputs_mlearn, train_output_mlearn = train_and_predict_xlearn(dataset, t, y, x, val_split=val_split)
+        else:
+            sys.exit('Wrong meta-learner selection')
 
-        output_dir_tlearn = os.path.join(simulation_output_dir, "T_learn/baseline")
-        os.makedirs(output_dir_tlearn, exist_ok=True)
-
-        # Save outputs for each split
-        for num, output in enumerate(test_outputs_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_test.npz".format(num)), **output)
-        for num, output in enumerate(train_output_tlearn):
-            np.savez_compressed(os.path.join(output_dir_tlearn, "{}_replication_train.npz".format(num)), **output)
-
-        '''################# X-learner
-        test_outputs_xlearn, train_output_xlearn = train_and_predict_xlearn(dataset, t, y, x, val_split=val_split)
-
-        output_dir_xlearn = os.path.join(simulation_output_dir, "X_learn/baseline")
-        os.makedirs(output_dir_xlearn, exist_ok=True)
+        output_dir_mlearn = os.path.join(simulation_output_dir, "M_learn/baseline")
+        os.makedirs(output_dir_mlearn, exist_ok=True)
 
         # Save outputs for each split
-        for num, output in enumerate(test_outputs_xlearn):
-            np.savez_compressed(os.path.join(output_dir_xlearn, "{}_replication_test.npz".format(num)), **output)
-        for num, output in enumerate(train_output_xlearn):
-            np.savez_compressed(os.path.join(output_dir_xlearn, "{}_replication_train.npz".format(num)), **output)'''
+        for num, output in enumerate(test_outputs_mlearn):
+            np.savez_compressed(os.path.join(output_dir_mlearn, "{}_replication_test.npz".format(num)), **output)
+        for num, output in enumerate(train_output_mlearn):
+            np.savez_compressed(os.path.join(output_dir_mlearn, "{}_replication_train.npz".format(num)), **output)
 
-        '''################# Hydranet baseline and Hydranet T-reg
+        ################# Hydranet baseline and Hydranet T-reg
         for is_targeted_regularization in [False, True]:
 
             test_outputs_hy, train_output_hy = train_and_predict_hydra(num_treats, t, y, x, targeted_regularization=is_targeted_regularization,loss=loss, val_split=val_split, batch_size=batch_size, eager_exec=eager_exec)
@@ -482,4 +585,4 @@ def run_train(input_dir, output_dir, dataset, num_treats, loss, loss_dr, val_spl
                 for num, output in enumerate(test_outputs_b2bd):
                     np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_test.npz".format(num)), **output)
                 for num, output in enumerate(train_output_b2bd):
-                    np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)'''
+                    np.savez_compressed(os.path.join(output_dir_b2bd, "{}_replication_train.npz".format(num)), **output)

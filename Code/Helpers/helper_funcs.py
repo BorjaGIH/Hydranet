@@ -226,16 +226,20 @@ class SaveBestModel(tf.keras.callbacks.Callback):
             self.best = float('inf')
 
     def on_epoch_end(self, epoch, logs=None):
-        metric_value = logs[self.save_best_metric]
-        if self.max:
-            if metric_value > self.best:
-                self.best = metric_value
-                self.best_weights = self.model.get_weights()
-
+        if self.save_best_metric not in logs:
+            print('Save best model')
+            self.best_weights = self.model.get_weights()
         else:
-            if metric_value < self.best:
-                self.best = metric_value
-                self.best_weights= self.model.get_weights()
+            metric_value = logs[self.save_best_metric]
+            if self.max:
+                if metric_value > self.best:
+                    self.best = metric_value
+                    self.best_weights = self.model.get_weights()
+
+            else:
+                if metric_value < self.best:
+                    self.best = metric_value
+                    self.best_weights= self.model.get_weights()
 
 
 def generate_result_table_ihdp(file, train_table, test_table, err_type='ae'):
