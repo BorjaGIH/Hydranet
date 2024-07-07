@@ -6,14 +6,12 @@ from Training.run_train_pred import *
 
 def main():
 
-    # Comment for new branch creation (development): commit 2
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--num_treats", type=int, default=5)
     parser.add_argument("--dataset", type=str, default="synthetic", choices=['synthetic', 'ihdp'])
     parser.add_argument("--input_dir", type=str, default="/home/bvelasco/Hydranet/")
-    parser.add_argument("--output_dir", type=str, default="/home/bvelasco/Hydranet/Results/Stable/")
+    parser.add_argument("--output_dir", type=str, default="/home/bvelasco/Hydranet/Results/")
     parser.add_argument("--main_param", type=str, choices=["data_size", 'n_confs', 'bias', 'positivity'])
     parser.add_argument("--main_param_size", type=int, default=None)
     parser.add_argument("--device", type=str, default='GPU', choices=["GPU", "CPU"])
@@ -22,7 +20,7 @@ def main():
     parser.add_argument("--val_split", type=float, default=0.2)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--Train", type=eval, default=False, choices= [True, False])
-    parser.add_argument("--Analyze", type=eval, default=False , choices=[True, False])
+    parser.add_argument("--Analyze", type=eval, default=False, choices=[True, False])
     parser.add_argument("--DR_flag", type=eval, default=False, choices=[True, False])
     parser.add_argument("--reps_start", type=int, default=0)
     parser.add_argument("--reps_end", type=int, default=20)
@@ -52,13 +50,13 @@ def main():
 
     # Result dicts
     main_param_dict = {'bias':[2,5,10,30],
-                       'positivity':[60, 70, 80, 90, 95, 98],
+                       'positivity':[60, 70, 80, 90, 98],
                        'n_confs':[2, 5, 10, 18],
                        'data_size':[1000, 2000, 5000, 8000]
                       }
     
     all_res_dict = {'bias': {2:[], 5:[], 10:[], 30:[]},
-                    'positivity': {60:[], 70:[], 80:[], 90:[], 95:[], 98:[]},
+                    'positivity': {60:[], 70:[], 80:[], 90:[], 98:[]},
                     'n_confs': {2:[], 5:[], 10:[], 18:[]},
                     'data_size': {1000:[], 2000:[], 5000:[], 8000:[]} 
                    }
@@ -77,7 +75,6 @@ def main():
     # Set seeds
     random.seed(1)
     np.random.seed(1)
-    
     
     # Train
     if Train:
@@ -104,8 +101,9 @@ def main():
                 print('Device is set to "GPU" but no GPU was found')
                 sys.exit()
 
+
         base_input_dir = os.path.join(input_dir, 'Input_data/')
-        base_output_dir = os.path.join(output_dir, 'Results_NN/')
+        base_output_dir = os.path.join(output_dir, 'results_'+main_param, 'Results_NN/')
         
 
         with tf.device(device):
@@ -142,7 +140,7 @@ def main():
     # Analyze
     if Analyze:
         print('Analyze')        
-        base_output_dir = os.path.join(output_dir, 'Results_NN/')
+        base_output_dir = os.path.join(output_dir, 'results_'+main_param, 'Results_NN/')
         base_input_dir = base_output_dir
         base_output_dir = os.path.join(output_dir, 'Results_CI/')
 

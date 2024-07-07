@@ -1,0 +1,12 @@
+\begin{tabular}{lll}
+\toprule
+{} &    Out-Sample &     In-Sample \\
+\midrule
+naive          &  14.81 ± 0.95 &  17.51 ± 2.03 \\
+b2bd base      &  26.35 ± 2.46 &   26.73 ± 3.1 \\
+M-learn base   &  13.53 ± 1.22 &    13.7 ± 1.2 \\
+Hydranet base  &   3.22 ± 0.73 &   3.33 ± 0.83 \\
+b2bd t-reg     &  27.57 ± 2.42 &  26.05 ± 2.84 \\
+Hydranet t-reg &   2.87 ± 0.57 &   2.91 ± 0.68 \\
+\bottomrule
+\end{tabular}

@@ -1,0 +1,76 @@
+In-sample
+Sum of true values
+2      1.514190
+5      6.044777
+10     9.848966
+30    15.623941
+Name: true, dtype: float64
+Naive estimator error:
+2     11.042065
+5     13.971661
+10    16.172901
+30    30.487381
+B2BD baseline error:
+2      6.373465
+5      8.370261
+10     9.548956
+30    13.282585
+B2BD T-reg error:
+2      6.246629
+5      8.403937
+10     9.463543
+30    13.672923
+Meta-learner estimator error:
+2      9.731413
+5     15.939312
+10    15.883796
+30    32.540320
+Hydranet baseline error:
+2     1.497338
+5     1.737994
+10    2.078632
+30    3.568598
+Hydranet  T-reg error:
+2     1.384749
+5     1.623412
+10    1.734453
+30    2.870868
+*******
+Out-sample
+Sum of true values
+2      1.750593
+5      6.729179
+10    10.203784
+30    20.256751
+Name: true, dtype: float64
+Naive estimator error:
+2     21.729185
+5     28.605639
+10    35.365495
+30    52.312453
+B2BD baseline error:
+2      6.282015
+5     12.923133
+10    12.683400
+30    36.377832
+B2BD T-reg error:
+2      6.156626
+5     12.988575
+10    12.629989
+30    35.706329
+Meta-learner estimator error:
+2     10.005462
+5     15.906902
+10    15.298130
+30    29.977968
+Hydranet baseline error:
+2     1.789404
+5     1.708751
+10    2.325510
+30    3.962297
+Hydranet  T-reg error:
+2     1.696759
+5     1.874233
+10    2.052770
+30    3.779545
+*******

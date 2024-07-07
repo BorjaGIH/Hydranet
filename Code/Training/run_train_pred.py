@@ -3,7 +3,7 @@ from Helpers.helper_funcs import *
 from Neural_Net.neural_net import *
 from Neural_Net.losses import *
 
-'''def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
+def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
     print('Hydranet, T-reg:', targeted_regularization)
     verbose = 0
     
@@ -88,7 +88,7 @@ from Neural_Net.losses import *
     hydranet.set_weights(save_best_model_sgd.best_weights)
 
     # Plot metrics to monitor the training process
-    ''plt.figure()
+    '''plt.figure()
     plt.plot(hydranet.history.history['loss'])
     plt.plot(hydranet.history.history['val_loss'])
     plt.legend(["Train", "Test"])
@@ -107,7 +107,7 @@ from Neural_Net.losses import *
     plt.plot(hydranet.history.history['val_track_epsilon'])
     plt.legend(["Train", "Test"])
     plt.title("Epsilon (T-reg = {})".format(targeted_regularization))
-    plt.show() # Epsilon''
+    plt.show() # Epsilon'''
 
     
     yt_hat_test = hydranet.predict(x_test)
@@ -118,10 +118,10 @@ from Neural_Net.losses import *
 
     K.clear_session()
 
-    return test_outputs, train_outputs'''
+    return test_outputs, train_outputs
 
 
-def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
+'''def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regularization, loss, val_split, batch_size, eager_exec):
     print('Hydranet, T-reg:', targeted_regularization)
     verbose = 0
     
@@ -194,7 +194,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     
 
     # Plot metrics to monitor the training process
-    '''plt.figure()
+    plt.figure()
     plt.plot(hydranet.history.history['loss'])
     plt.plot(hydranet.history.history['val_loss'])
     plt.legend(["Train", "Test"])
@@ -213,7 +213,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
     plt.plot(hydranet.history.history['val_track_epsilon'])
     plt.legend(["Train", "Test"])
     plt.title("Epsilon (T-reg = {})".format(targeted_regularization))
-    plt.show() # Epsilon'''
+    plt.show() # Epsilon
 
     yt_hat_test = hydranet.predict(x_test)
     yt_hat_train = hydranet.predict(x_train)
@@ -223,7 +223,7 @@ def train_and_predict_hydra(num_treats, t, y_unscaled, x_unscaled, targeted_regu
 
     K.clear_session()
 
-    return test_outputs, train_outputs
+    return test_outputs, train_outputs'''
 
 
 def train_and_predict_b2bd(t, y_unscaled, x, targeted_regularization, loss, val_split, batch_size):
